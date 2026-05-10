@@ -277,3 +277,52 @@ export async function finishAiGenerationJob(jobId, { status, responsePayload, er
     [jobId, status, responsePayload || {}, errorMessage || null, durationMs || null]
   );
 }
+
+/**
+ * 从 history_messages 表随机采样，用于 burst 效果。
+ * 使用 random_key 列做 ORDER BY random() 的廉价替代，避免全表扫描。
+ * 每次调用后更新 used_count 和 last_used_at，便于后续分析。
+ */
+export async function pickHistoryMessages(count = 14) {
+  const safeCount = Math.max(1, Math.min(Number(count) || 14, 50));
+
+  const result = await query(
+    `SELECT * FROM history_messages
+     WHERE safety_level = 'safe'
+     ORDER BY random_key
+     LIMIT $1`,
+    [safeCount * 3] // 多取一些再在应用层 shuffle，避免每次顺序相同
+  );
+
+  if (result.rows.length === 0) return [];
+
+  // Fisher-Yates shuffle，然后取前 safeCount 条
+  const rows = result.rows;
+  for (let i = rows.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [rows[i], rows[j]] = [rows[j], rows[i]];
+  }
+  const picked = rows.slice(0, safeCount);
+
+  // 异步更新使用统计，不阻塞响应
+  const ids = picked.map((row) => row.id);
+  query(
+    `UPDATE history_messages
+     SET used_count = used_count + 1,
+         last_used_at = $2,
+         random_key = random()
+     WHERE id = ANY($1::text[])`,
+    [ids, Date.now()]
+  ).catch(() => {/* 统计失败不影响主流程 */});
+
+  return picked.map((row) => ({
+    id: `history-${row.id}-${Date.now()}`,
+    fanName: row.fan_name || "fan",
+    avatar: row.avatar || "🐰",
+    language: row.language || "zh",
+    content: row.content,
+    translatedContent: row.translated_content || row.content,
+    personaType: row.persona_type || undefined,
+    messageKind: "ambient"
+  }));
+}

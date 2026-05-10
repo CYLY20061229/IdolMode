@@ -6,21 +6,44 @@ import IconButton from "@/components/IconButton";
 import PrimaryButton from "@/components/PrimaryButton";
 import { colors, spacing } from "@/constants/theme";
 import { useIdolMode } from "@/context/IdolModeContext";
-import { generateLiveFanMessages } from "@/services/fanMessageApi";
+import { fetchHistoryBurst, generateLiveFanMessages } from "@/services/fanMessageApi";
 import { FanMessage } from "@/types/idol";
 
 export default function FanMessagesScreen() {
   const scrollRef = useRef<ScrollView>(null);
   const liveQueue = useRef<FanMessage[]>([]);
   const liveRequestInFlight = useRef(false);
+  const hasBurst = useRef(false);
   const {
     fanMessages,
     appendLiveFanMessages,
+    prependHistoryFanMessages,
     getRecentArtistMessage,
     translatedMessageIds,
     toggleFanMessageTranslation
   } = useIdolMode();
 
+  // History burst: 进入页面时一次性插入历史消息，模拟"不在时粉丝一直在发"
+  useEffect(() => {
+    if (hasBurst.current) return;
+    hasBurst.current = true;
+
+    const runBurst = async () => {
+      const count = 12 + Math.floor(Math.random() * 5); // 12–16 条
+      const messages = await fetchHistoryBurst(count);
+      if (messages.length > 0) {
+        prependHistoryFanMessages(messages);
+      }
+      // 等 React 渲染完再滚到底部
+      setTimeout(() => {
+        scrollRef.current?.scrollToEnd({ animated: false });
+      }, 120);
+    };
+
+    void runBurst();
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Live drip: 每 500ms 从队列取一条，队列不足时预取
   useEffect(() => {
     const fetchBatch = async () => {
       if (liveRequestInFlight.current) return;
@@ -42,11 +65,12 @@ export default function FanMessagesScreen() {
       if (liveQueue.current.length < 4) {
         void fetchBatch();
       }
-    }, 900);
+    }, 500);
 
     return () => clearInterval(timer);
   }, [appendLiveFanMessages, getRecentArtistMessage]);
 
+  // 每次新消息追加后滚到底部（live drip 触发）
   useEffect(() => {
     const timer = setTimeout(() => {
       scrollRef.current?.scrollToEnd({ animated: true });

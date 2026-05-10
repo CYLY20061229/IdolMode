@@ -98,3 +98,28 @@ export async function generateLiveFanMessages(recentArtistMessage?: string, coun
 
   return Array.from({ length: count }, () => generateMockLiveFanMessage(recentArtistMessage));
 }
+
+/**
+ * 拉取历史消息池中的随机消息，用于进入粉丝消息页时的 burst 效果。
+ * 后端从 history_messages 表随机采样；若 API 不可用则降级到 live mock。
+ */
+export async function fetchHistoryBurst(count = 14): Promise<FanMessage[]> {
+  try {
+    const data = await postToApi("/ai/history-burst", { count });
+    const fanMessages = data?.fanMessages;
+    if (fanMessages?.length) {
+      return fanMessages.map((item, index) =>
+        normalizeFanMessage(item, `history-burst-${Date.now()}-${index}`)
+      );
+    }
+  } catch (error) {
+    console.warn("History burst API unavailable, using live mock fallback.", error);
+  }
+
+  // 降级：用 live mock 生成同等数量的消息
+  return Array.from({ length: count }, (_, index) => ({
+    ...generateMockLiveFanMessage(),
+    id: `history-fallback-${Date.now()}-${index}`,
+    messageKind: "ambient" as const
+  }));
+}

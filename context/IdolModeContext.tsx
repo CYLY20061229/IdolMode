@@ -1,4 +1,4 @@
-import React, { createContext, ReactNode, useContext, useMemo, useState } from "react";
+import React, { createContext, ReactNode, useContext, useEffect, useMemo, useState } from "react";
 import {
   addedArtists as initialAddedArtists,
   fanMessages as initialFanMessages,
@@ -12,9 +12,20 @@ import {
   generateLiveFanMessages,
   generateLiveFanMessage
 } from "@/services/fanMessageApi";
+import {
+  authDevice,
+  fetchBootstrap,
+  apiUpdateProfile,
+  apiAddFriend,
+  apiRemoveFriend,
+  apiCreateSelfMessage,
+  apiUpdateSelfMessageStatus,
+  apiCreateIdolChatMessage
+} from "@/services/apiClient";
 import { Artist, ChatMessage, FanMessage, IdolChatThread, Profile } from "@/types/idol";
 
 type IdolModeContextValue = {
+  isReady: boolean;
   myProfile: Profile;
   updateProfile: (profile: Profile) => void;
   addedArtists: Artist[];
@@ -27,6 +38,7 @@ type IdolModeContextValue = {
   fanMessages: FanMessage[];
   appendLiveFanMessage: () => Promise<void>;
   appendLiveFanMessages: (messages: FanMessage[]) => void;
+  prependHistoryFanMessages: (messages: FanMessage[]) => void;
   getRecentArtistMessage: () => string | undefined;
   translatedMessageIds: string[];
   toggleFanMessageTranslation: (messageId: string) => void;
@@ -42,6 +54,7 @@ function timeNow() {
 }
 
 export function IdolModeProvider({ children }: { children: ReactNode }) {
+  const [isReady, setIsReady] = useState(false);
   const [myProfile, setMyProfile] = useState<Profile>(initialProfile);
   const [addedArtists, setAddedArtists] = useState<Artist[]>(initialAddedArtists);
   const [selfMessages, setSelfMessages] = useState<ChatMessage[]>(initialSelfChatMessages);
@@ -49,18 +62,54 @@ export function IdolModeProvider({ children }: { children: ReactNode }) {
   const [translatedMessageIds, setTranslatedMessageIds] = useState<string[]>([]);
   const [idolThreads, setIdolThreads] = useState<IdolChatThread[]>(initialIdolChatMessages);
 
+  // Bootstrap: auth device → fetch user data from DB
+  useEffect(() => {
+    let cancelled = false;
+
+    async function bootstrap() {
+      try {
+        // Ensure we have a userId (creates one if first launch)
+        await authDevice();
+
+        // Load persisted data from backend
+        const data = await fetchBootstrap();
+        if (cancelled) return;
+
+        if (data) {
+          if (data.profile) setMyProfile(data.profile);
+          if (data.addedArtists?.length) setAddedArtists(data.addedArtists);
+          if (data.selfMessages?.length) setSelfMessages(data.selfMessages);
+          if (data.fanMessages?.length) setFanMessages(data.fanMessages);
+          if (data.idolThreads?.length) setIdolThreads(data.idolThreads);
+        }
+      } catch {
+        // Network unavailable — continue with mock data
+      } finally {
+        if (!cancelled) setIsReady(true);
+      }
+    }
+
+    void bootstrap();
+    return () => { cancelled = true; };
+  }, []);
+
   const value = useMemo<IdolModeContextValue>(() => {
-    const updateProfile = (profile: Profile) => setMyProfile(profile);
+    const updateProfile = (profile: Profile) => {
+      setMyProfile(profile);
+      void apiUpdateProfile(profile);
+    };
 
     const addArtist = (artist: Artist) => {
       setAddedArtists((current) => {
         if (current.some((item) => item.id === artist.id)) return current;
         return [...current, artist];
       });
+      void apiAddFriend(artist.id);
     };
 
     const removeArtist = (artistId: string) => {
       setAddedArtists((current) => current.filter((artist) => artist.id !== artistId));
+      void apiRemoveFriend(artistId);
     };
 
     const isArtistAdded = (artistId: string) => addedArtists.some((artist) => artist.id === artistId);
@@ -74,6 +123,7 @@ export function IdolModeProvider({ children }: { children: ReactNode }) {
         createdAt: timeNow()
       };
       setSelfMessages((current) => [...current, message]);
+      void apiCreateSelfMessage(message);
       return message;
     };
 
@@ -85,6 +135,7 @@ export function IdolModeProvider({ children }: { children: ReactNode }) {
           return { ...message, status: "sent" };
         })
       );
+      void apiUpdateSelfMessageStatus(messageId, "sent");
 
       const reply: ChatMessage = {
         id: `fan-emoji-${Date.now()}`,
@@ -107,6 +158,10 @@ export function IdolModeProvider({ children }: { children: ReactNode }) {
         const next = [...current, ...messages];
         return next.slice(Math.max(next.length - 90, 0));
       });
+    };
+
+    const prependHistoryFanMessages = (messages: FanMessage[]) => {
+      setFanMessages((current) => [...messages, ...current]);
     };
 
     const appendLiveFanMessage = async () => {
@@ -137,9 +192,11 @@ export function IdolModeProvider({ children }: { children: ReactNode }) {
             : thread
         )
       );
+      void apiCreateIdolChatMessage(artistId, message);
     };
 
     return {
+      isReady,
       myProfile,
       updateProfile,
       addedArtists,
@@ -152,13 +209,14 @@ export function IdolModeProvider({ children }: { children: ReactNode }) {
       fanMessages,
       appendLiveFanMessage,
       appendLiveFanMessages,
+      prependHistoryFanMessages,
       getRecentArtistMessage,
       translatedMessageIds,
       toggleFanMessageTranslation,
       idolThreads,
       sendIdolChatMessage
     };
-  }, [addedArtists, fanMessages, idolThreads, myProfile, selfMessages, translatedMessageIds]);
+  }, [addedArtists, fanMessages, idolThreads, isReady, myProfile, selfMessages, translatedMessageIds]);
 
   return <IdolModeContext.Provider value={value}>{children}</IdolModeContext.Provider>;
 }

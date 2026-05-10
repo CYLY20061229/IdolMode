@@ -15,6 +15,7 @@ import {
   getBootstrap,
   getUserId,
   listFanMessages,
+  pickHistoryMessages,
   removeArtistFriend,
   updateProfile,
   updateSelfMessageStatus,
@@ -342,6 +343,23 @@ const server = http.createServer(async (req, res) => {
         responsePayload: { count: fanMessages.length },
         durationMs: Date.now() - aiStartedAt
       });
+      sendJson(req, res, 200, { fanMessages, requestId: id }, {
+        "X-RateLimit-Remaining": String(limited.remaining)
+      });
+      return;
+    }
+
+    // 历史消息 burst：从 history_messages 表随机采样，不调用 AI
+    if (req.method === "POST" && url.pathname === "/ai/history-burst") {
+      if (!isDbEnabled()) {
+        // DB 未配置时返回空列表，前端会降级到 mock
+        sendJson(req, res, 200, { fanMessages: [], requestId: id });
+        return;
+      }
+
+      const body = await readJson(req);
+      const count = Math.max(1, Math.min(Number(body.count) || 14, 50));
+      const fanMessages = await pickHistoryMessages(count);
       sendJson(req, res, 200, { fanMessages, requestId: id }, {
         "X-RateLimit-Remaining": String(limited.remaining)
       });
