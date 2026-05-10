@@ -1,0 +1,3 @@
+{"ts":"2026-05-10T07:59:31.380Z","pid":6501,"level":"info","event":"request","requestId":"mozhfc4z-5bvhhu","method":"GET","path":"/health","statusCode":200,"durationMs":1,"ip":"127.0.0.1","userAgent":"curl/8.6.0"}
+{"ts":"2026-05-10T07:59:31.431Z","pid":6501,"level":"info","event":"request","requestId":"mozhfc6f-2y2kv0","method":"GET","path":"/api/health","statusCode":200,"durationMs":0,"ip":"127.0.0.1","userAgent":"curl/8.6.0"}
+{"ts":"2026-05-10T07:59:31.468Z","pid":6501,"level":"info","event":"request","requestId":"mozhfc7g-nub9jf","method":"GET","path":"/api/health/db","statusCode":500,"durationMs":0,"ip":"127.0.0.1","userAgent":"curl/8.6.0"}

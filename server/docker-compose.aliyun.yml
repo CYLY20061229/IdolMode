@@ -1,0 +1,17 @@
+services:
+  idol-mode-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: idol-mode-api:latest
+    container_name: idol-mode-api
+    restart: unless-stopped
+    env_file:
+      - .env.production
+    ports:
+      - "127.0.0.1:8787:8787"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8787/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3

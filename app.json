@@ -1,0 +1,24 @@
+{
+  "expo": {
+    "name": "Idol Mode",
+    "slug": "idol-mode",
+    "scheme": "idolmode",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "backgroundColor": "#FFF9FB"
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": false
+    },
+    "android": {},
+    "plugins": [
+      "expo-router"
+    ],
+    "experiments": {}
+  }
+}
