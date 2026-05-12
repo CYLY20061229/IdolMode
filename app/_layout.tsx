@@ -1,11 +1,12 @@
 import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { ActivityIndicator, View } from "react-native";
+import ProfileSetup from "@/components/ProfileSetup";
 import { IdolModeProvider, useIdolMode } from "@/context/IdolModeContext";
 import { colors } from "@/constants/theme";
 
 function AppNavigator() {
-  const { isReady } = useIdolMode();
+  const { isReady, isProfileComplete } = useIdolMode();
 
   if (!isReady) {
     return (
@@ -13,6 +14,10 @@ function AppNavigator() {
         <ActivityIndicator color={colors.primary} />
       </View>
     );
+  }
+
+  if (!isProfileComplete) {
+    return <ProfileSetup />;
   }
 
   return (
@@ -24,6 +29,8 @@ function AppNavigator() {
       <Stack.Screen name="fan-messages" />
       <Stack.Screen name="idol-chat/[id]" />
       <Stack.Screen name="settings" />
+      <Stack.Screen name="my-profile" />
+      <Stack.Screen name="my-memories" />
     </Stack>
   );
 }

@@ -1,17 +1,35 @@
 import { StyleSheet, Text, View } from "react-native";
 import { colors, shadow } from "@/constants/theme";
+import { IdolGrowthStats } from "@/types/idol";
 
-const stats = [
-  ["My Fans", "12,408"],
-  ["Messages Received This Month", "3,284"],
-  ["Compared to Last Month", "+18%"],
-  ["Active Fan Rate", "76%"]
-];
+type MyBubbleStatsProps = {
+  growthStats: IdolGrowthStats | null;
+  fanMessageCount: number;
+};
 
-export default function MyBubbleStats() {
+function formatFollowers(n: number): string {
+  if (n >= 10000) return `${(n / 10000).toFixed(1)}万`;
+  return n.toLocaleString();
+}
+
+export default function MyBubbleStats({ growthStats, fanMessageCount }: MyBubbleStatsProps) {
+  const followers = growthStats ? formatFollowers(growthStats.followers) : "—";
+  const dailyPct = growthStats
+    ? `${Math.round((growthStats.dailyBusinessValue / growthStats.maxDailyBusinessValue) * 100)}%`
+    : "—";
+  const streak = growthStats ? `${growthStats.streakDays} 天` : "—";
+  const msgCount = fanMessageCount > 0 ? fanMessageCount.toLocaleString() : "—";
+
+  const stats = [
+    ["我的粉丝", followers],
+    ["今日营业值", dailyPct],
+    ["连续营业", streak],
+    ["收到消息", msgCount]
+  ] as const;
+
   return (
     <View style={styles.card}>
-      <Text style={styles.title}>MY bubble</Text>
+      <Text style={styles.title}>我的 bubble</Text>
       <View style={styles.grid}>
         {stats.map(([label, value]) => (
           <View key={label} style={styles.stat}>

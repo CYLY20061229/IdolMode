@@ -2,56 +2,58 @@ import { Artist, ChatMessage, FanMessage, IdolChatThread, Profile } from "@/type
 
 export const myProfile: Profile = {
   id: "me",
-  nickname: "Luna Field",
-  signature: "Tonight I am practicing how to shine softly.",
-  email: "luna.field@example.com",
-  avatar: "LF"
+  nickname: "月野 Luna",
+  signature: "今晚也在练习。",
+  email: "",
+  avatar: "月",
+  gender: "",
+  age: null
 };
 
 export const recommendedArtists: Artist[] = [
   {
     id: "artist-1",
-    nickname: "Mira Vale",
-    avatar: "MV",
+    nickname: "mira",
+    avatar: "mira",
     background: "#EADDF8",
-    bio: "A dreamy solo artist who sends late-night voice-note energy.",
-    signature: "Tiny moon, big stage.",
-    identity: "Solo Artist",
+    bio: "组合FIFTEEN主唱",
+    signature: "永远喜欢fifties！",
+    identity: "爱豆",
     fans: "82.4K",
-    intro: "Mira writes warm synth-pop and leaves tiny notes for fans after rehearsal."
+    intro: "mira 是韩国人气女团 FIFTEEN 的主唱，喜欢在练习室和粉丝分享一些小日常和练习点滴。"
   },
   {
     id: "artist-2",
     nickname: "Nova Rin",
     avatar: "NR",
     background: "#DCEEFF",
-    bio: "Virtual idol with a soft glitch heart and cosmic dance breaks.",
-    signature: "Signal found. Heart online.",
-    identity: "Virtual Idol",
+    bio: "菲律宾新兴艺人，新曲《grey》正在推广中！",
+    signature: "Love wins",
+    identity: "独立歌手",
     fans: "146K",
-    intro: "Nova appears in digital stages and treats every chat like a secret constellation."
+    intro: "Nova 是一位来自菲律宾的独立歌手，喜欢在社交媒体上和粉丝分享一些生活中的小确幸，还有一些写歌的灵感来源。"
   },
   {
     id: "artist-3",
     nickname: "Eden Skye",
     avatar: "ES",
     background: "#F3D7E5",
-    bio: "Band vocal with gentle chaos, coffee lyrics, and sunrise rehearsals.",
-    signature: "Still singing, still here.",
-    identity: "Band Vocal",
+    bio: "欧洲乐队OTS主唱，融合摇滚与R&B元素的创作型歌手。",
+    signature: "I will sing until the world ends.",
+    identity: "乐队主唱",
     fans: "57.9K",
-    intro: "Eden is the main vocal of a fictional indie band and loves sending rehearsal diary messages."
+    intro: "Eden 是独立乐队的主唱，喜欢把排练日记和没说出口的心情发给粉丝。"
   },
   {
     id: "artist-4",
-    nickname: "Sora Bloom",
-    avatar: "SB",
+    nickname: "王亿灵",
+    avatar: "王",
     background: "#E3F4E8",
-    bio: "Soft-spoken dance performer who collects little fan wishes.",
-    signature: "One more step toward you.",
-    identity: "Dance Artist",
+    bio: "舞者转型的流行歌手，在中国拥有人气偶像的地位。",
+    signature: "再向你靠近一步。",
+    identity: "舞者",
     fans: "39.1K",
-    intro: "Sora shares small behind-the-scenes moments, sleepy updates, and practice-room courage."
+    intro: "亿灵喜欢在练习室里和粉丝分享一些练舞的趣事，还有一些生活中的小感悟。"
   }
 ];
 
@@ -61,7 +63,7 @@ export const selfChatMessages: ChatMessage[] = [
   {
     id: "self-1",
     sender: "self",
-    text: "Practice ended late, but I saw the moon from the studio window. It felt like a tiny encore.",
+    text: "今天练习结束得很晚，但我从练习室窗户看到了月亮，像一场很小的安可。",
     status: "sent",
     createdAt: "22:18"
   },
@@ -80,13 +82,13 @@ export const idolChatMessages: IdolChatThread[] = [
       {
         id: "mira-1",
         sender: "artist",
-        text: "I saved one tiny lyric from rehearsal today. Maybe it will become yours soon.",
+        text: "今天排练有了一些灵感，或许会是一首很好的歌！",
         createdAt: "21:02"
       },
       {
         id: "mira-2",
         sender: "artist",
-        text: "Drink water for me, okay? I forgot until the choreographer stared at my bottle.",
+        text: "替我多喝点水好吗？",
         createdAt: "21:35"
       }
     ]
@@ -97,7 +99,7 @@ export const idolChatMessages: IdolChatThread[] = [
       {
         id: "nova-1",
         sender: "artist",
-        text: "System note: I missed you by 0.003 seconds today.",
+        text: "",
         createdAt: "20:11"
       }
     ]
@@ -108,7 +110,7 @@ export const idolChatMessages: IdolChatThread[] = [
       {
         id: "eden-1",
         sender: "artist",
-        text: "My throat is tired, but my heart is noisy. Thank you for listening from wherever you are.",
+        text: "嗓子有点累，还遇到一群teenagers，FXCK",
         createdAt: "23:04"
       }
     ]
@@ -119,7 +121,7 @@ export const idolChatMessages: IdolChatThread[] = [
       {
         id: "sora-1",
         sender: "artist",
-        text: "I finally landed the turn. It looked quiet, but inside I was fireworks.",
+        text: "今天又去练舞！",
         createdAt: "19:47"
       }
     ]
@@ -132,8 +134,8 @@ export const fanMessages: FanMessage[] = [
     fanName: "小雨",
     avatar: "🐰",
     language: "zh",
-    content: "你今天也辛苦了，看到你发消息我就放心一点。",
-    translatedContent: "你今天也辛苦了，看到你发消息我就放心一点。"
+    content: "自拍自拍自拍",
+    translatedContent: "自拍自拍自拍"
   },
   {
     id: "fan-2",
@@ -172,8 +174,8 @@ export const fanMessages: FanMessage[] = [
     fanName: "甜桃",
     avatar: "🐻",
     language: "zh",
-    content: "又只发一句？好吧，一句也够我循环看十遍。",
-    translatedContent: "又只发一句？好吧，一句也够我循环看十遍。"
+    content: "多发点自拍好不",
+    translatedContent: "多发点自拍好不"
   }
 ];
 
@@ -218,154 +220,534 @@ const chaoticFanNicknamePool = [
   "想当你的便利贴", "想当你的行李箱", "让我住进你的歌单"
 ];
 const toxicFanNicknamePool = [
-  "怎么还不营业", "今天又失踪了", "你还知道回来", "营业很难吗", "少装神秘", "你最好有事",
-  "今天必须营业", "营业欠费了吗", "又装消失是吧", "你是不是忘了我们", "搞事业好吗",
-  "作品呢作品呢", "专辑什么时候发", "舞台在哪里", "事业批真的会急", "你能不能争气点",
-  "数据女工已崩溃", "榜单保安发怒", "音源巡逻员", "回归倒计时bot", "今天练声了吗",
-  "你最好在写歌", "少营业多练习", "别逼我催你", "事业心在哪里", "舞台粉很着急",
-  "作品粉想报警", "恋爱禁止bot", "恋爱达咩", "房塌观察员", "塌房预警机",
-  "事业上升期别恋爱", "恋爱脑退散", "单身证明交一下"
+  "怎么还不营业", "今天营业了吗", "你还知道回来", "营业很难吗", "少装神秘", "你最好有事",
+  "今天必须营业", "营业欠费了吗", "又装消失是吧", "你是不是忘了我们", "不再依赖姐姐算长大吗",
+  "作品呢作品呢", "专辑什么时候发", "舞台在哪里", "姐姐的小狗", "你能不能争气点",
+  "崩溃", "都去投票，你也去", "姐姐注意身体", "回归倒计时", "今天练声了吗",
+  "姐姐的唯一", "妈妈爱你", "妈妈", "老婆", "想做姐姐的狗",
+  "想吃姐姐的。。。", "恋爱禁止bot", "恋爱达咩", "想吃你", "赤壁",
+  "事业上升期别恋爱", "不要留美甲", "单身否"
 ];
 let emojiIndex = 0;
 let liveFanIndex = 0;
 
+function randomItem<T>(items: T[]): T {
+  return items[Math.floor(Math.random() * items.length)];
+}
+
 function randomFanAvatar() {
-  return fanAvatarPool[Math.floor(Math.random() * fanAvatarPool.length)];
+  return randomItem(fanAvatarPool);
 }
 
-function nextFanNickname() {
+function hasCJK(text: string) {
+  return /[\u4e00-\u9fff]/.test(text);
+}
+
+function hasKoreanOrJapanese(text: string) {
+  return /[\u3040-\u30ff\uac00-\ud7af]/.test(text);
+}
+
+const zhNormalNicknamePool = normalFanNicknamePool.filter((name) => hasCJK(name) && !hasKoreanOrJapanese(name));
+const foreignNicknamePool = normalFanNicknamePool.filter((name) => !hasCJK(name) || hasKoreanOrJapanese(name));
+
+function nextFanNickname(language: string = "zh") {
   const random = Math.random();
-  let pool = normalFanNicknamePool;
-  if (random > 0.9) {
-    pool = toxicFanNicknamePool;
-  } else if (random > 0.68) {
-    pool = chaoticFanNicknamePool;
+
+  if (language !== "zh") {
+    const useForeign = Math.random() < 0.75;
+    const pool = useForeign ? foreignNicknamePool : zhNormalNicknamePool;
+    return randomItem(pool.length ? pool : normalFanNicknamePool);
   }
-  return pool[Math.floor(Math.random() * pool.length)];
+
+  if (random < 0.08) {
+    return randomItem(toxicFanNicknamePool);
+  }
+
+  if (random < 0.28) {
+    return randomItem(chaoticFanNicknamePool);
+  }
+
+  return randomItem(zhNormalNicknamePool.length ? zhNormalNicknamePool : normalFanNicknamePool);
 }
 
-const liveFanMessagePool: Omit<FanMessage, "id">[] = [
-  {
-    fanName: "Riri",
-    avatar: "🐰",
-    personaType: "hype captain",
-    messageKind: "ambient",
-    language: "en",
-    content: "I was about to sleep and then you appeared. Illegal timing.",
-    translatedContent: "我正准备睡觉你就出现了，这个时机太犯规了。"
-  },
-  {
-    fanName: "柚子冰",
-    avatar: "🐱",
-    personaType: "detail detective",
-    messageKind: "ambient",
-    language: "zh",
-    content: "已读十遍，准备开始第十一遍。",
-    translatedContent: "已读十遍，准备开始第十一遍。"
-  },
-  {
-    fanName: "나비",
-    avatar: "🐶",
-    personaType: "comfort guardian",
-    messageKind: "ambient",
-    language: "ko",
-    content: "밥은 먹었어요? 진짜로 물어보는 거예요.",
-    translatedContent: "吃饭了吗？我是真的在问。"
-  },
-  {
-    fanName: "そら",
-    avatar: "🐼",
-    personaType: "soft encourager",
-    messageKind: "ambient",
-    language: "jp",
-    content: "今日の一言、ちゃんと受け取りました。",
-    translatedContent: "今天的这一句话，我好好收到了。"
-  },
-  {
-    fanName: "Cata",
-    avatar: "🦊",
-    personaType: "waiting-room fan",
-    messageKind: "ambient",
-    language: "es",
-    content: "Prometo esperar, pero sube algo pronto.",
-    translatedContent: "我保证会等你，但快点再发点什么。"
-  },
-  {
-    fanName: "奶油卷",
-    avatar: "🐻",
-    personaType: "sleep police",
-    messageKind: "ambient",
-    language: "zh",
-    content: "别硬撑啦，营业可以短，休息不能少。",
-    translatedContent: "别硬撑啦，营业可以短，休息不能少。"
-  },
-  {
-    fanName: "Jae",
-    avatar: "🐹",
-    personaType: "new fan sparkle",
-    messageKind: "ambient",
-    language: "en",
-    content: "This message just fixed my whole commute.",
-    translatedContent: "这条消息直接拯救了我的通勤路。"
-  },
-  {
-    fanName: "하루",
-    avatar: "🐨",
-    personaType: "emoji minimalist",
-    messageKind: "ambient",
-    language: "ko",
-    content: "짧아도 좋아요. 와준 게 좋아요.",
-    translatedContent: "短也没关系。你来了就很好。"
+function normalizeContent(text: string) {
+  return text
+    .replace(/\s+/g, "")
+    .replace(/[，。！？,.!?~～…🥺😭💜✨🫶🌙]/g, "")
+    .toLowerCase();
+}
+
+const recentContentKeys: string[] = [];
+const recentFanNames: string[] = [];
+const recentPersonaTypes: string[] = [];
+const recentLanguages: string[] = [];
+
+function rememberMessage(message: FanMessage) {
+  recentContentKeys.push(normalizeContent(message.content));
+  recentFanNames.push(message.fanName);
+  recentPersonaTypes.push(message.personaType ?? "unknown");
+  recentLanguages.push(message.language);
+
+  if (recentContentKeys.length > 200) recentContentKeys.shift();
+  if (recentFanNames.length > 40) recentFanNames.shift();
+  if (recentPersonaTypes.length > 40) recentPersonaTypes.shift();
+  if (recentLanguages.length > 40) recentLanguages.shift();
+}
+
+function isTooRepetitive(message: FanMessage) {
+  const key = normalizeContent(message.content);
+
+  if (recentContentKeys.includes(key)) return true;
+
+  const sameNameCount = recentFanNames.slice(-20).filter((name) => name === message.fanName).length;
+  if (sameNameCount >= 2) return true;
+
+  const samePersonaCount = recentPersonaTypes
+    .slice(-10)
+    .filter((persona) => persona === message.personaType).length;
+  if (samePersonaCount >= 3) return true;
+
+  const sameLanguageCount = recentLanguages
+    .slice(-6)
+    .filter((language) => language === message.language).length;
+  if (sameLanguageCount >= 4 && message.language !== "zh") return true;
+
+  return false;
+}
+
+function pickLanguage(preferZh = true): FanMessage["language"] {
+  if (preferZh) {
+    const random = Math.random();
+
+    if (random < 0.7) return "zh";
+    if (random < 0.8) return "en";
+    if (random < 0.88) return "ko";
+    if (random < 0.96) return "jp";
+    return "es";
   }
+
+  return randomItem<FanMessage["language"]>(["zh", "en", "ko", "jp", "es"]);
+}
+
+const localPrefixes = [
+  "",
+  "",
+  "",
+  "说真的，",
+  "不知道咋的，",
+  "我刚刚又想了想，",
+  "其实，",
+  "妈呀，",
+  "爸呀大哥，",
+  "呃"
+  
 ];
 
-const reactionFanMessagePool: Omit<FanMessage, "id">[] = [
-  {
-    fanName: "晚星",
-    avatar: "🐯",
-    personaType: "dramatic crier",
-    messageKind: "reaction",
-    language: "zh",
-    content: "你刚才那句真的让我眼泪一下就上来了。",
-    translatedContent: "你刚才那句真的让我眼泪一下就上来了。"
-  },
-  {
-    fanName: "Mika",
-    avatar: "🦁",
-    personaType: "hype captain",
-    messageKind: "reaction",
-    language: "en",
-    content: "That update just turned my whole night around.",
-    translatedContent: "你刚才那条消息直接让我的夜晚变好了。"
-  },
-  {
-    fanName: "半糖",
-    avatar: "🐸",
-    personaType: "teasing old fan",
-    messageKind: "reaction",
-    language: "zh",
-    content: "刚才那句太短了，罚你下次多说一点。",
-    translatedContent: "刚才那句太短了，罚你下次多说一点。"
-  },
-  {
-    fanName: "별밤",
-    avatar: "🐧",
-    personaType: "comfort guardian",
-    messageKind: "reaction",
-    language: "ko",
-    content: "그 말 들으니까 더 쉬었으면 좋겠어요.",
-    translatedContent: "听到那句话之后，更希望你好好休息。"
-  },
-  {
-    fanName: "Luz",
-    avatar: "🦄",
-    personaType: "long-distance fan",
-    messageKind: "reaction",
-    language: "es",
-    content: "Ese mensaje llegó hasta mi zona horaria.",
-    translatedContent: "那条消息传到了我的时区。"
-  }
+const localSuffixes = [
+  "",
+  "",
+  "",
+  "🥺",
+  "真的。",
+  "别嫌我啰嗦。",
+  "我会一直记着。",
+  "今天先这样也很好。"
 ];
+
+function addLocalVariation(content: string, personaType: string) {
+  if (content.length > 45) return content;
+
+  const shouldAddPrefix = Math.random() < 0.22;
+  const shouldAddSuffix = Math.random() < 0.28;
+
+  let result = content;
+
+  if (shouldAddPrefix) {
+    result = `${randomItem(localPrefixes)}${result}`;
+  }
+
+  if (shouldAddSuffix) {
+    const suffix = randomItem(localSuffixes);
+
+    if (suffix && !result.endsWith("。") && !result.endsWith("！") && !result.endsWith("?") && !result.endsWith("？")) {
+      result += "。";
+    }
+
+    result += suffix;
+  }
+
+  if (personaType === "chaotic meme fan" && Math.random() < 0.25) {
+    result += randomItem(["我先疯了。", "别管我。", "我宣布我很稳定。"]);
+  }
+
+  return result;
+}
+
+function fillTemplate(template: string, slots: Record<string, string[]>) {
+  return template.replace(/\{(\w+)\}/g, (_, key) => {
+    const values = slots[key] ?? [""];
+    return randomItem(values);
+  });
+}
+
+const templateSlots = {
+  careAction: ["好好吃饭", "按时睡觉", "多喝水", "少熬夜", "穿多一点", "别太累"],
+  careEmotion: ["担心", "惦记", "放心不下", "操心", "忍不住关心"],
+  dailyScene: ["刚下课", "刚下班", "刚从图书馆回来", "刚洗完澡", "坐地铁的时候", "考完试之后"],
+  dailyFeeling: ["有点累", "肚肚要炸了", "突然特别想你", "感觉终于熬过了一天", "感觉人生太难了"],
+  waitingTime: ["五分钟", "十分钟", "一会儿", "到睡前", "到你出现为止"],
+  oldFood: ["旧自拍", "上次的消息", "以前的舞台", "之前的 demo", "那张旧照片"],
+  musicThing: ["新歌", "demo", "舞台", "练习室版本", "下一次现场", "副歌","舞蹈版本mv","专辑", "巡演"],
+  reactionFeeling: ["heart软软", "破防", "眼睛尿尿了", "突然被治愈到", "又开始想你"],
+  lateTime: ["凌晨", "睡前", "深夜", "关灯的时候", "准备睡觉的时候"]
+};
+
+const personaTemplates: Record<string, string[]> = {
+  "mom fan": [
+    "你今天有没有{careAction}，我真的{careEmotion}",
+    "不发消息也没关系，记得{careAction}",
+    "宝宝，{careAction}不能能糊弄过去的哦。",
+    "我真的想你，爱你，有没有{careAction}",
+    "你可以少发一点，但不能不好好{careAction}"
+  ],
+  "sleep police": [
+    "如果你还没睡，我真的要管管你了",
+    "现在这个点还不休息的话，我得收你手机了",
+    "现在还没睡，不会是和亲亲对象分手了失恋吧",
+    "分手了才知道来找粉丝是不？？？",
+    "下班了吗宝，快点睡觉吧，我也要睡觉了",
+    "晚安宝宝，我好累啊今天工作太辛苦了",
+    "晚安，我还有一个月考试只好熬夜了，但是你要好好休息，你是我的一切",
+    "我好想你啊，睡觉前想见你一面，我希望在梦里见到你，我爱你",
+    "祝我做一个有你的美梦好吗",
+    "这么晚不睡觉在和谁法呢"
+
+  ],
+  "life diary fan": [
+    "我今天{dailyScene}，{dailyFeeling}!!!",
+    "{dailyScene}的时候突然想到你，我爱你",
+    "今天好平淡，就是{dailyFeeling}。",
+    "我刚刚{dailyScene}，知道了不，收到请回复",
+    "今天也算认真活过来了，奖励自己给你发点消息"
+  ],
+  "hungry waiting fan": [
+    "今天也没有自拍吗，我再等{waitingTime}。",
+    "{oldFood}已经被我翻到快会背了。",
+    "还没有消息吗，软件都落灰了吧，你队友发的比你多多了",
+    "学学你队友行吗，你发这么少是恨我们吗",
+    "我好想你啊我每天都在想你，我已崩溃我已急哭我已投降"
+  ],
+  "chaotic meme fan": [
+    "阿帕特阿帕特阿帕特阿帕特",
+    "宝宝你觉得五女一是谁",
+    "妈妈妈妈妈妈妈妈",
+    "爸爸爸爸爸爸爸爸",
+    "能不能少提队友。。。"
+  ],
+  "career stan": [
+    "可以营业，但{musicThing}也要继续搞，好吗",
+    "你来不来无所谓，{musicThing}什么时候来。",
+    "多泡泡练习室好吗，就你一直抢拍",
+    "啥时候去上声乐课啊，你的消音让我抬不起头知道吗",
+    "啥时候去上声乐课啊，听不出来自己跑调漏气吗小姐姐，到时候一位安可我又得退网了",
+    "你的实力是最好的底气",
+    "你最好是在认真准备{musicThing}。",
+    "别光聊天谈恋爱了，{musicThing}麻溜拿出来。"
+  ],
+  "music listener": [
+    "今天又想起你的{musicThing}，我完全和你共鸣了宝宝，我想我会爱你一辈子",
+    "我不想看你一直被防爆，我是真的想听到更完整的{musicThing}。",
+    "你的声音总是让我有安全感，在我最困难的时候拯救我。。。我爱你",
+    "无数个失眠的夜晚都是你的音乐陪伴我，我好想你啊，我好累",
+    "能写出那样的旋律。。。你是天才吧"
+  ],
+  "girlfriend fan": [
+    "你能不能不要随便出现一下就让我{reactionFeeling}。",
+    "你知道你这样很容易让人舍不得走吗。",
+    "你一出现，我就觉得一切都值得",
+    "我真的很爱你，我离不开你了可是我不想这样。。。你也很普通，我知道",
+    "你总是这样，说模棱两可的话，演得像我的爱人。。。我知道你在和很多人对话，是我一直在骗自己，是我错了",
+    "再说一句我爱你好不好，让我做个好梦",
+    "当我想你爱你的时候，你又在和谁亲密无间呢，我讨厌这样",
+    "你是我的，对吧",
+    "一辈子不谈恋爱好不好，一辈子在我身边好不好",
+    "因为你我一直不想找对象，因为你就是我的爱人",
+  ],
+  "dramatic crier": [
+    "家人们咱就是说咱们公主少爷终于上线了",
+    "谁懂啊，我看到你在线就已经开始{reactionFeeling}。",
+    "啊啊啊啊啊啊啊啊啊啊啊啊啊啊你来了宝宝",
+    "啊啊啊啊啊啊啊啊啊啊啊啊啊啊啊啊我爱你宝贝",
+    "啊啊啊啊啊啊啊啊啊啊啊啊啊啊啊啊啊"
+  ],
+  "detail detective": [
+    "你那条ins里的同款啥意思",
+    "为什么最近的理想型这么具体。。。。感觉不妙了",
+    "最近的说话风格变了。你又谈上了是吧",
+    "你别在ins里暗戳错秀恩爱了，你又谈上了是吧",
+    "最近这情绪，估计被甩了"
+  ],
+  "soft encourager": [
+    "不来也没关系，休息好了再来就行。",
+    "你可以慢慢来，我们不是只喜欢你发光的时候。",
+    "今天也辛苦了，不用一直表现得很坚强。",
+    "如果今天很难，那就先把今天过完。",
+    "你不用每次都给出完美状态，真的。"
+  ],
+  "working adult fan": [
+    "刚下班，牛马人生不止何时能了，我真羡慕你。",
+    "开了一天会，你快给老娘哄开心了",
+    "通勤路上又听了一遍你的歌，我觉得人生也没那么糟糕",
+    "老板今天又画饼，给我看麻了",
+    "今天工作真的很烦，烦死了烦死了烦死了安慰我安慰我安慰我"
+  ],
+  "school fan": [
+    "明天早八，但我还是要和你聊天，那咋啦",
+    "作业写不完了怎么办！！！！！救救我",
+    "刚从图书馆出来，今年超级充实",
+    "今天考试考得考砸了，好想找你哭诉",
+    "早八真的会毁掉一整天，你这种文盲是不会懂的"
+  ],
+  "teasing toxic fan": [
+    "哦，终于想起来这里还有一群人在等你了是吧。",
+    "恋爱谈爽了没",
+    "又没消息，行，我自己哄自己。",
+    "你最好是真的在忙，不是在和别人约会",
+    "大明星今天也很忙是吧。别忘了自己的来时路哈，忘本没有好下场"
+  ],
+  "new fan sparkle": [
+    "我是新粉！！！！宝宝你真的太好了",
+    "这个app怎么用啊，对面是真人吗，不会是语c吧",
+    "本来只是tour一下，怎么越陷越深。。。",
+    "tour了一下发现你真的很好，我要严肃考虑入坑了",
+    "你咋这么好看，给我垂到坑底了啊啊啊啊啊啊啊啊啊啊啊啊啊"
+  ],
+  "late night fan": [
+    "{lateTime}的时候人会变诚实，所以我承认我很爱你，离不开你。",
+    "睡不着，和你聊天",
+    "今天终于结束了，来跟你说一句晚安。",
+    "一天里只有夜晚是我的时间，我想和你度过",
+    "你是我存在的意义，每次想到你我都很幸福，我爱你"
+  ],
+  "quote jealous fan": [
+    "为什么引用的不是我，我也发了好多条的",
+    "你眼里只有别人，我不如那个人是吗",
+    "下次我也要被你看见，我也想被你引用",
+    "你引用别人的时候我心里酸酸的，我不说",
+    "那条消息有什么好的，我发的不比它好吗",
+    "好吧，我知道了，我不如她。。。",
+    "你引用别人我就难受，你知道吗，你知道吗",
+    "下次换我好不好，就换我一次"
+  ]
+};
+
+const englishTemplates = [
+  "I had a long day today. This room feels oddly comforting.",
+  "No update is okay. I just hope you are resting somewhere warm.",
+  "I know you do not know me, but this still feels like company.",
+  "You showed up for one second and my whole mood changed.",
+  "I was about to sleep and then you appeared. Illegal timing."
+];
+
+const koreanTemplates = [
+  "밥은 먹었어요? 진짜로 물어보는 거예요.",
+  "짧아도 좋아요. 와준 게 좋아요.",
+  "잠이 안 와서 그냥 여기 들어왔어.",
+  "오늘도 무리하지 말고 따뜻하게 쉬어요.",
+  "조용한 밤에 네 생각이 조금 났어."
+];
+
+const japaneseTemplates = [
+  "今日の一言、ちゃんと受け取りました。",
+  "短い言葉なのに、夜が少しやわらかくなった。",
+  "学校の帰りに雨が降ってきた。少しだけ寂しかった。",
+  "ちゃんと食べて、ちゃんと寝てね。本当に。",
+  "まだ新しいファンだけど、もう毎日見に来てる。"
+];
+
+const spanishTemplates = [
+  "Prometo esperar, pero sube algo pronto.",
+  "Aquí todavía es temprano, pero ya te estoy esperando.",
+  "No tienes que venir siempre. Solo descansa bien.",
+  "Hoy fue un día normal, pero quería dejarte un mensaje.",
+  "Apareces un segundo y ya me cambias el ánimo."
+];
+
+function translatedFor(content: string, language: string) {
+  if (language === "zh") return content;
+
+  const dictionary: Record<string, string> = {
+    "I had a long day today. This room feels oddly comforting.": "我今天过得很累。这个房间却莫名让人安心。",
+    "No update is okay. I just hope you are resting somewhere warm.": "没有更新也没关系。我只是希望你正在某个温暖的地方休息。",
+    "I know you do not know me, but this still feels like company.": "我知道你不认识我，但这依然像是一种陪伴。",
+    "You showed up for one second and my whole mood changed.": "你出现一秒，我的心情就变了。",
+    "I was about to sleep and then you appeared. Illegal timing.": "我正准备睡觉你就出现了，这个时机太犯规了。",
+    "밥은 먹었어요? 진짜로 물어보는 거예요.": "吃饭了吗？我是真的在问。",
+    "짧아도 좋아요. 와준 게 좋아요.": "短也没关系。你来了就很好。",
+    "잠이 안 와서 그냥 여기 들어왔어.": "睡不着，所以就来这里了。",
+    "오늘도 무리하지 말고 따뜻하게 쉬어요.": "今天也不要太勉强，要暖暖地休息。",
+    "조용한 밤에 네 생각이 조금 났어.": "安静的夜里，稍微想起了你。",
+    "今日の一言、ちゃんと受け取りました。": "今天的这一句话，我好好收到了。",
+    "短い言葉なのに、夜が少しやわらかくなった。": "明明只是很短的话，夜晚却莫名变柔软了一点。",
+    "学校の帰りに雨が降ってきた。少しだけ寂しかった。": "放学路上下雨了，有一点点寂寞。",
+    "ちゃんと食べて、ちゃんと寝てね。本当に。": "要好好吃饭，好好睡觉。真的。",
+    "まだ新しいファンだけど、もう毎日見に来てる。": "虽然我还是新粉，但已经每天都会来看了。",
+    "Prometo esperar, pero sube algo pronto.": "我保证会等你，但快点再发点什么。",
+    "Aquí todavía es temprano, pero ya te estoy esperando.": "我这里还早，但我已经在等你了。",
+    "No tienes que venir siempre. Solo descansa bien.": "你不用总是出现。好好休息就好。",
+    "Hoy fue un día normal, pero quería dejarte un mensaje.": "今天是很普通的一天，但我想给你留一条消息。",
+    "Apareces un segundo y ya me cambias el ánimo.": "你出现一秒，我的心情就变了。"
+  };
+
+  return dictionary[content] ?? content;
+}
+
+function pickPersonaForAmbient() {
+  return randomItem([
+    "mom fan",
+    "sleep police",
+    "life diary fan",
+    "hungry waiting fan",
+    "chaotic meme fan",
+    "career stan",
+    "music listener",
+    "girlfriend fan",
+    "dramatic crier",
+    "detail detective",
+    "soft encourager",
+    "working adult fan",
+    "school fan",
+    "teasing toxic fan",
+    "new fan sparkle",
+    "late night fan"
+  ]);
+}
+
+function pickPersonaForReaction(idolMessage: string) {
+  const text = idolMessage.toLowerCase();
+
+  // 引用了粉丝消息 → 有概率触发 quote jealous fan
+  if (/引用|quote/.test(text) || Math.random() < 0.12) {
+    return "quote jealous fan";
+  }
+
+  if (/累|困|晚|睡|练习|practice|tired|sleep/.test(text)) {
+    return randomItem(["mom fan", "sleep police", "career stan", "soft encourager", "dramatic crier"]);
+  }
+
+  if (/歌|新歌|demo|舞台|音乐|唱|跳|song|music|stage|dance/.test(text)) {
+    return randomItem(["career stan", "music listener", "detail detective", "dramatic crier", "new fan sparkle"]);
+  }
+
+  if (/想你|谢谢|值得|喜欢|爱|miss|thank|love/.test(text)) {
+    return randomItem(["girlfriend fan", "dramatic crier", "soft encourager", "detail detective", "chaotic meme fan"]);
+  }
+
+  if (/吃|饭|今天|日常|出去|回家|下课|下班|food|today/.test(text)) {
+    return randomItem(["life diary fan", "mom fan", "girlfriend fan", "soft encourager", "new fan sparkle"]);
+  }
+
+  return randomItem([
+    "girlfriend fan",
+    "dramatic crier",
+    "detail detective",
+    "soft encourager",
+    "chaotic meme fan",
+    "teasing toxic fan",
+    "new fan sparkle",
+    "quote jealous fan"
+  ]);
+}
+
+function makeForeignMessage(language: string): Pick<FanMessage, "content" | "translatedContent"> {
+  if (language === "en") {
+    const content = randomItem(englishTemplates);
+    return { content, translatedContent: translatedFor(content, language) };
+  }
+
+  if (language === "ko") {
+    const content = randomItem(koreanTemplates);
+    return { content, translatedContent: translatedFor(content, language) };
+  }
+
+  if (language === "jp") {
+    const content = randomItem(japaneseTemplates);
+    return { content, translatedContent: translatedFor(content, language) };
+  }
+
+  if (language === "es") {
+    const content = randomItem(spanishTemplates);
+    return { content, translatedContent: translatedFor(content, language) };
+  }
+
+  const content = randomItem(englishTemplates);
+  return { content, translatedContent: translatedFor(content, "en") };
+}
+
+function makeMessage(
+  options: {
+    messageKind: "ambient" | "reaction";
+    idolMessage?: string;
+    fromMessageId?: string;
+    preferZh?: boolean;
+  }
+): FanMessage {
+  const language = pickLanguage(options.preferZh ?? true);
+  const personaType =
+    options.messageKind === "reaction"
+      ? pickPersonaForReaction(options.idolMessage ?? "")
+      : pickPersonaForAmbient();
+
+  let content = "";
+  let translatedContent = "";
+
+  if (language === "zh") {
+    const templates = personaTemplates[personaType] ?? personaTemplates["soft encourager"];
+    content = fillTemplate(randomItem(templates), templateSlots);
+    content = addLocalVariation(content, personaType);
+    translatedContent = content;
+  } else {
+    const foreign = makeForeignMessage(language);
+    content = foreign.content;
+    translatedContent = foreign.translatedContent ?? foreign.content;
+  }
+
+  return {
+    id: `${options.messageKind}-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+    fanName: nextFanNickname(language),
+    avatar: randomFanAvatar(),
+    personaType,
+    messageKind: options.messageKind,
+    language,
+    content,
+    translatedContent,
+    fromMessageId: options.messageKind === "reaction" ? options.fromMessageId : undefined
+  };
+}
+
+function makeUniqueMessage(
+  options: {
+    messageKind: "ambient" | "reaction";
+    idolMessage?: string;
+    fromMessageId?: string;
+    preferZh?: boolean;
+  },
+  maxAttempts = 12
+): FanMessage {
+  let message = makeMessage(options);
+
+  for (let i = 0; i < maxAttempts; i += 1) {
+    if (!isTooRepetitive(message)) {
+      rememberMessage(message);
+      return message;
+    }
+
+    message = makeMessage(options);
+  }
+
+  rememberMessage(message);
+  return message;
+}
 
 export function generateFanEmojiReply(): string {
   const reply = emojiReplies[emojiIndex % emojiReplies.length];
@@ -373,65 +755,251 @@ export function generateFanEmojiReply(): string {
   return reply;
 }
 
-export function generateFanMessagesAfterSend(message: string): FanMessage[] {
-  const stamp = Date.now();
-  return [
-    {
-      id: `generated-${stamp}-1`,
-      fanName: nextFanNickname(),
-      avatar: randomFanAvatar(),
-      personaType: "protective big sibling",
-      language: "en",
-      content: "That line felt like a tiny blanket. Please rest too.",
-      translatedContent: "那句话像一条小毯子。你也要休息。",
-      fromMessageId: message
-    },
-    {
-      id: `generated-${stamp}-2`,
-      fanName: nextFanNickname(),
-      avatar: randomFanAvatar(),
-      personaType: "teasing old fan",
-      language: "zh",
-      content: "营业检查通过，但下次能不能多打两个字。",
-      translatedContent: "营业检查通过，但下次能不能多打两个字。",
-      fromMessageId: message
-    },
-    {
-      id: `generated-${stamp}-3`,
-      fanName: nextFanNickname(),
-      avatar: randomFanAvatar(),
-      personaType: "comfort guardian",
-      language: "ko",
-      content: "무리하지 말고 따뜻하게 있어요.",
-      translatedContent: "别勉强自己，要暖暖地待着。主语是你。",
-      fromMessageId: message
-    },
-    {
-      id: `generated-${stamp}-4`,
-      fanName: nextFanNickname(),
-      avatar: randomFanAvatar(),
-      personaType: "update chaser",
-      language: "es",
-      content: "Ya estoy esperando el próximo mensaje.",
-      translatedContent: "我已经在等下一条消息了。"
-    }
-  ];
+export function generateFanMessagesAfterSend(
+  message: string,
+  fromMessageId?: string,
+  count = 32
+): FanMessage[] {
+  const id = fromMessageId ?? `self-${Date.now()}`;
+
+  return Array.from({ length: count }, () =>
+    makeUniqueMessage({
+      messageKind: "reaction",
+      idolMessage: message,
+      fromMessageId: id,
+      preferZh: true
+    })
+  );
+}
+
+export function generateLiveFanMessages(recentArtistMessage?: string, count = 30): FanMessage[] {
+  return Array.from({ length: count }, (_, index) => {
+    const shouldReact = Boolean(recentArtistMessage) && Math.random() < 0.3;
+
+    return makeUniqueMessage({
+      messageKind: shouldReact ? "reaction" : "ambient",
+      idolMessage: shouldReact ? recentArtistMessage : undefined,
+      fromMessageId: shouldReact ? `recent-${normalizeContent(recentArtistMessage ?? "").slice(0, 12)}` : undefined,
+      preferZh: true
+    });
+  });
 }
 
 export function generateLiveFanMessage(recentArtistMessage?: string): FanMessage {
-  const shouldReact = Boolean(recentArtistMessage) && liveFanIndex % 3 === 1;
-  const pool = shouldReact ? reactionFanMessagePool : liveFanMessagePool;
-  const base = pool[liveFanIndex % pool.length];
+  const messages = generateLiveFanMessages(recentArtistMessage, 1);
   liveFanIndex += 1;
-  return {
-    ...base,
-    fanName: nextFanNickname(),
-    avatar: randomFanAvatar(),
-    fromMessageId: shouldReact ? recentArtistMessage : undefined,
-    id: `live-${Date.now()}-${liveFanIndex}`
-  };
+  return messages[0];
 }
 
 export function translateFanMessage(messageId: string): FanMessage | undefined {
   return fanMessages.find((message) => message.id === messageId);
 }
+// let emojiIndex = 0;
+// let liveFanIndex = 0;
+
+// function randomFanAvatar() {
+//   return fanAvatarPool[Math.floor(Math.random() * fanAvatarPool.length)];
+// }
+
+// function nextFanNickname() {
+//   const random = Math.random();
+//   let pool = normalFanNicknamePool;
+//   if (random > 0.9) {
+//     pool = toxicFanNicknamePool;
+//   } else if (random > 0.68) {
+//     pool = chaoticFanNicknamePool;
+//   }
+//   return pool[Math.floor(Math.random() * pool.length)];
+// }
+
+// const liveFanMessagePool: Omit<FanMessage, "id">[] = [
+//   {
+//     fanName: "Riri",
+//     avatar: "🐰",
+//     personaType: "hype captain",
+//     messageKind: "ambient",
+//     language: "en",
+//     content: "I was about to sleep and then you appeared. Illegal timing.",
+//     translatedContent: "我正准备睡觉你就出现了，这个时机太犯规了。"
+//   },
+//   {
+//     fanName: "柚子冰",
+//     avatar: "🐱",
+//     personaType: "detail detective",
+//     messageKind: "ambient",
+//     language: "zh",
+//     content: "已读十遍，准备开始第十一遍。",
+//     translatedContent: "已读十遍，准备开始第十一遍。"
+//   },
+//   {
+//     fanName: "나비",
+//     avatar: "🐶",
+//     personaType: "comfort guardian",
+//     messageKind: "ambient",
+//     language: "ko",
+//     content: "밥은 먹었어요? 진짜로 물어보는 거예요.",
+//     translatedContent: "吃饭了吗？我是真的在问。"
+//   },
+//   {
+//     fanName: "そら",
+//     avatar: "🐼",
+//     personaType: "soft encourager",
+//     messageKind: "ambient",
+//     language: "jp",
+//     content: "今日の一言、ちゃんと受け取りました。",
+//     translatedContent: "今天的这一句话，我好好收到了。"
+//   },
+//   {
+//     fanName: "Cata",
+//     avatar: "🦊",
+//     personaType: "waiting-room fan",
+//     messageKind: "ambient",
+//     language: "es",
+//     content: "Prometo esperar, pero sube algo pronto.",
+//     translatedContent: "我保证会等你，但快点再发点什么。"
+//   },
+//   {
+//     fanName: "奶油卷",
+//     avatar: "🐻",
+//     personaType: "sleep police",
+//     messageKind: "ambient",
+//     language: "zh",
+//     content: "别硬撑啦，营业可以短，休息不能少。",
+//     translatedContent: "别硬撑啦，营业可以短，休息不能少。"
+//   },
+//   {
+//     fanName: "Jae",
+//     avatar: "🐹",
+//     personaType: "new fan sparkle",
+//     messageKind: "ambient",
+//     language: "en",
+//     content: "This message just fixed my whole commute.",
+//     translatedContent: "这条消息直接拯救了我的通勤路。"
+//   },
+//   {
+//     fanName: "하루",
+//     avatar: "🐨",
+//     personaType: "emoji minimalist",
+//     messageKind: "ambient",
+//     language: "ko",
+//     content: "짧아도 좋아요. 와준 게 좋아요.",
+//     translatedContent: "短也没关系。你来了就很好。"
+//   }
+// ];
+
+// const reactionFanMessagePool: Omit<FanMessage, "id">[] = [
+//   {
+//     fanName: "晚星",
+//     avatar: "🐯",
+//     personaType: "dramatic crier",
+//     messageKind: "reaction",
+//     language: "zh",
+//     content: "你刚才那句真的让我眼泪一下就上来了。",
+//     translatedContent: "你刚才那句真的让我眼泪一下就上来了。"
+//   },
+//   {
+//     fanName: "Mika",
+//     avatar: "🦁",
+//     personaType: "hype captain",
+//     messageKind: "reaction",
+//     language: "en",
+//     content: "That update just turned my whole night around.",
+//     translatedContent: "你刚才那条消息直接让我的夜晚变好了。"
+//   },
+//   {
+//     fanName: "半糖",
+//     avatar: "🐸",
+//     personaType: "teasing old fan",
+//     messageKind: "reaction",
+//     language: "zh",
+//     content: "刚才那句太短了，罚你下次多说一点。",
+//     translatedContent: "刚才那句太短了，罚你下次多说一点。"
+//   },
+//   {
+//     fanName: "별밤",
+//     avatar: "🐧",
+//     personaType: "comfort guardian",
+//     messageKind: "reaction",
+//     language: "ko",
+//     content: "그 말 들으니까 더 쉬었으면 좋겠어요.",
+//     translatedContent: "听到那句话之后，更希望你好好休息。"
+//   },
+//   {
+//     fanName: "Luz",
+//     avatar: "🦄",
+//     personaType: "long-distance fan",
+//     messageKind: "reaction",
+//     language: "es",
+//     content: "Ese mensaje llegó hasta mi zona horaria.",
+//     translatedContent: "那条消息传到了我的时区。"
+//   }
+// ];
+
+// export function generateFanEmojiReply(): string {
+//   const reply = emojiReplies[emojiIndex % emojiReplies.length];
+//   emojiIndex += 1;
+//   return reply;
+// }
+
+// export function generateFanMessagesAfterSend(message: string): FanMessage[] {
+//   const stamp = Date.now();
+//   return [
+//     {
+//       id: `generated-${stamp}-1`,
+//       fanName: nextFanNickname(),
+//       avatar: randomFanAvatar(),
+//       personaType: "protective big sibling",
+//       language: "en",
+//       content: "That line felt like a tiny blanket. Please rest too.",
+//       translatedContent: "那句话像一条小毯子。你也要休息。",
+//       fromMessageId: message
+//     },
+//     {
+//       id: `generated-${stamp}-2`,
+//       fanName: nextFanNickname(),
+//       avatar: randomFanAvatar(),
+//       personaType: "teasing old fan",
+//       language: "zh",
+//       content: "营业检查通过，但下次能不能多打两个字。",
+//       translatedContent: "营业检查通过，但下次能不能多打两个字。",
+//       fromMessageId: message
+//     },
+//     {
+//       id: `generated-${stamp}-3`,
+//       fanName: nextFanNickname(),
+//       avatar: randomFanAvatar(),
+//       personaType: "comfort guardian",
+//       language: "ko",
+//       content: "무리하지 말고 따뜻하게 있어요.",
+//       translatedContent: "别勉强自己，要暖暖地待着。主语是你。",
+//       fromMessageId: message
+//     },
+//     {
+//       id: `generated-${stamp}-4`,
+//       fanName: nextFanNickname(),
+//       avatar: randomFanAvatar(),
+//       personaType: "update chaser",
+//       language: "es",
+//       content: "Ya estoy esperando el próximo mensaje.",
+//       translatedContent: "我已经在等下一条消息了。"
+//     }
+//   ];
+// }
+
+// export function generateLiveFanMessage(recentArtistMessage?: string): FanMessage {
+//   const shouldReact = Boolean(recentArtistMessage) && liveFanIndex % 3 === 1;
+//   const pool = shouldReact ? reactionFanMessagePool : liveFanMessagePool;
+//   const base = pool[liveFanIndex % pool.length];
+//   liveFanIndex += 1;
+//   return {
+//     ...base,
+//     fanName: nextFanNickname(),
+//     avatar: randomFanAvatar(),
+//     fromMessageId: shouldReact ? recentArtistMessage : undefined,
+//     id: `live-${Date.now()}-${liveFanIndex}`
+//   };
+// }
+
+// export function translateFanMessage(messageId: string): FanMessage | undefined {
+//   return fanMessages.find((message) => message.id === messageId);
+// }

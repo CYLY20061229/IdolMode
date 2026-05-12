@@ -46,10 +46,20 @@ https://help.aliyun.com/zh/ecs/user-guide/install-and-use-docker
 在本机：
 
 ```bash
-rsync -av --exclude node_modules --exclude .expo --exclude .env.local \
+rsync -av \
+  --exclude node_modules \
+  --exclude .expo \
+  --exclude .env \
+  --exclude .env.local \
+  --exclude .env.production \
+  --exclude 'server/.env' \
+  --exclude 'server/.env.local' \
+  --exclude 'server/.env.production' \
   /Users/chenyang/Desktop/今天也在营业/ \
   root@YOUR_ECS_IP:/opt/idol-mode/
 ```
+
+> **重要：** `.env` 系列文件永远不要被 rsync 覆盖。服务器上的 `.env` 只在服务器上维护，本地不存这些文件（`.gitignore` 已忽略它们）。
 
 ## 配置环境变量
 
@@ -107,11 +117,26 @@ pm2 startup systemd -u root --hp /root
 
 `pm2 startup` 会输出一条需要复制执行的命令，执行后重启机器也会自动恢复 PM2 进程。
 
-日常部署更新：
+日常部署更新（在本机执行）：
 
 ```bash
-cd /opt/idol-mode/server
-npm run pm2:reload
+# 一键部署：同步代码 + npm ci + pm2 reload
+# .env 文件永远不会被覆盖
+./scripts/deploy.sh root@YOUR_ECS_IP
+```
+
+或者手动分步：
+
+```bash
+# 1. 同步代码（.env 系列全部排除）
+rsync -av \
+  --exclude '.git' --exclude 'node_modules' --exclude 'server/node_modules' \
+  --exclude '.expo' --exclude '.env' --exclude '.env.local' --exclude '.env.production' \
+  --exclude 'server/.env' --exclude 'server/.env.local' --exclude 'server/.env.production' \
+  /Users/chenyang/Desktop/今天也在营业/ root@YOUR_ECS_IP:/opt/idol-mode/
+
+# 2. 在服务器上重载
+ssh root@YOUR_ECS_IP "cd /opt/idol-mode/server && npm ci --omit=dev && npm run pm2:reload"
 pm2 status
 curl http://127.0.0.1:8787/health
 ```

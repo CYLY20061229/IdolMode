@@ -4,6 +4,9 @@
     "slug": "idol-mode",
     "scheme": "idolmode",
     "version": "1.0.0",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
     "orientation": "portrait",
     "userInterfaceStyle": "light",
     "splash": {
@@ -13,12 +16,37 @@
       "**/*"
     ],
     "ios": {
-      "supportsTablet": false
+      "supportsTablet": false,
+      "bundleIdentifier": "com.idolmode.app"
     },
-    "android": {},
+    "android": {
+      "package": "com.idolmode.app",
+      "versionCode": 1,
+      "usesCleartextTraffic": true,
+      "adaptiveIcon": {
+        "backgroundColor": "#FFF9FB"
+      },
+      "permissions": [
+        "android.permission.RECORD_AUDIO",
+        "android.permission.MODIFY_AUDIO_SETTINGS"
+      ]
+    },
     "plugins": [
-      "expo-router"
+      "expo-router",
+      "expo-av"
     ],
-    "experiments": {}
+    "experiments": {},
+    "web": {
+      "bundler": "metro"
+    },
+    "extra": {
+      "router": {
+        "origin": false
+      },
+      "eas": {
+        "projectId": "58903b9a-e25e-482d-aed1-d8804eef4e28"
+      }
+    },
+    "owner": "chenyang1111"
   }
 }

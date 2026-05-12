@@ -152,6 +152,26 @@ export const fanPersonas = [
     languages: ["zh", "en", "jp"]
   },
   {
+    type: "selfie obsessed",
+    style: "一直在求自拍的粉丝，每条消息都在要自拍、要照片、要镜头；语气可爱卑微，像在下跪，会说求求了、就一张、自拍自拍自拍、你的脸我的命",
+    languages: ["zh", "en", "jp"]
+  },
+  {
+    type: "mom dad caller",
+    style: "突然叫妈妈或爸爸（就这两个字），没有前因后果，纯粹情绪爆发；每条消息极短，就是「妈妈」或「爸爸」或「妈！」或「爸！」，偶尔加一个感叹号或 emoji，不要解释原因",
+    languages: ["zh"]
+  },
+  {
+    type: "devoted devotee",
+    style: "深情执着粉，会说好想法你、法不到你人生没有意义、法到你是我这辈子最对的事、没有你我不知道怎么活；「法」是粉丝圈「发现」的谐音梗，语气真诚、有点沉重但不是威胁",
+    languages: ["zh"]
+  },
+  {
+    type: "quote jealous fan",
+    style: "看到 idol 引用了别人的粉丝消息而吃醋的粉丝；会说为什么不引用我、我也发了好多条、你眼里只有别人、我不如那个人、下次我也要被你看见；语气像撒娇、有点委屈、有点酸，但不是真的生气",
+    languages: ["zh", "ko", "jp"]
+  },
+  {
     type: "timeline explosion fan",
     style: "像社交平台时间线炸了的粉丝，反应快、句子短、情绪强，适合生成热闹的即时反馈",
     languages: ["zh", "en", "es"]
@@ -297,6 +317,9 @@ export function normalizeFanMessage(message, index, kind = "ambient") {
   const content = String(message?.content || "今天也在等你。").slice(0, 120);
   const messageKind = message?.messageKind === "reaction" ? "reaction" : kind;
 
+  // 保留 usedMemoryIds（reaction-burst 记忆注入用）
+  const usedMemoryIds = Array.isArray(message?.usedMemoryIds) ? message.usedMemoryIds : [];
+
   return {
     id: message?.id || `api-${Date.now()}-${index}`,
     fanName: String(message?.fanName || getRandomFanNickname()).slice(0, 24),
@@ -306,7 +329,8 @@ export function normalizeFanMessage(message, index, kind = "ambient") {
     translatedContent: String(message?.translatedContent || content).slice(0, 140),
     personaType,
     messageKind,
-    fromMessageId: message?.fromMessageId
+    fromMessageId: message?.fromMessageId,
+    usedMemoryIds
   };
 }
 
@@ -316,13 +340,16 @@ export function fallbackFanMessage(index = 0, recentArtistMessage = "", kind = "
     "今天也在等你，不急。",
     "看到通知亮起来就开心。",
     "短短一句也够我撑过今晚。",
-    "希望你今天也被温柔对待。"
+    "希望你今天也被温柔对待。",
+    "自拍自拍自拍求求了。",
+    "就一张，求你了。",
+    "妈妈",
+    "妈！",
+    "好想法你，法不到你人生没有意义。",
+    "法到你是我这辈子最对的事。"
   ];
   const reactionSamples = [
-    "刚才那句话我收到了。",
-    "你那句真的有安慰到我。",
-    "发完这句就去休息，好吗。",
-    "刚才那条太短了，想再听一点。"
+
   ];
   const samples = kind === "reaction" ? reactionSamples : ambientSamples;
   const content = samples[(fallbackIndex + index) % samples.length];
@@ -339,9 +366,16 @@ export function fallbackFanMessage(index = 0, recentArtistMessage = "", kind = "
   }, index, kind);
 }
 
-export function fallbackFanMessages(count = 4, recentArtistMessage = "") {
+export function fallbackFanMessages(count = 4, recentArtistMessage = "", forceKind = "") {
   const messages = Array.from({ length: count }, (_, index) => {
-    const kind = recentArtistMessage && (fallbackIndex + index) % 3 === 1 ? "reaction" : "ambient";
+    let kind;
+    if (forceKind === "reaction") {
+      kind = "reaction";
+    } else if (forceKind === "ambient") {
+      kind = "ambient";
+    } else {
+      kind = recentArtistMessage && (fallbackIndex + index) % 3 === 1 ? "reaction" : "ambient";
+    }
     return fallbackFanMessage(index, recentArtistMessage, kind);
   });
   fallbackIndex += count;

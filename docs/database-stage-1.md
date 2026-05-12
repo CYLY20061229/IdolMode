@@ -63,17 +63,29 @@ curl -X POST http://127.0.0.1:8787/auth/device \
   --data '{"deviceId":"ios-device-demo-001","platform":"ios"}'
 ```
 
-返回 `user.id`。后续请求可以带：
+返回 `user.id` 和 `sessionToken`。后续 App 请求优先带：
+
+```text
+Authorization: Bearer returned-session-token
+```
+
+手动调试时暂时仍兼容：
 
 ```text
 X-User-Id: returned-user-id
+```
+
+上线前建议设置：
+
+```env
+ALLOW_INSECURE_USER_ID_HEADER=false
 ```
 
 ### 拉取启动数据
 
 ```bash
 curl http://127.0.0.1:8787/me/bootstrap \
-  -H 'X-User-Id: returned-user-id'
+  -H 'Authorization: Bearer returned-session-token'
 ```
 
 ### 保存资料

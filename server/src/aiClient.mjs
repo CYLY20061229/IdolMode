@@ -33,7 +33,7 @@ export function getAiConfig() {
     model,
     provider,
     temperature: Number(process.env.QWEN_TEMPERATURE || process.env.AI_TEMPERATURE || process.env.DEEPSEEK_TEMPERATURE || 1.05),
-    maxTokens: Number(process.env.QWEN_MAX_TOKENS || process.env.AI_MAX_TOKENS || process.env.DEEPSEEK_MAX_TOKENS || 900)
+    maxTokens: Number(process.env.QWEN_MAX_TOKENS || process.env.AI_MAX_TOKENS || process.env.DEEPSEEK_MAX_TOKENS || 4000)
   };
 }
 
@@ -43,14 +43,24 @@ async function postChatCompletion(payload, retryWithoutJsonMode = true) {
     throw new Error("Missing QWEN_API_KEY or DASHSCOPE_API_KEY.");
   }
 
-  const response = await fetch(`${config.baseUrl}/chat/completions`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${config.apiKey}`
-    },
-    body: JSON.stringify(payload)
-  });
+  // 服务端超时：50s，防止 Qwen 长时间无响应导致前端先断开
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 50_000);
+
+  let response;
+  try {
+    response = await fetch(`${config.baseUrl}/chat/completions`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${config.apiKey}`
+      },
+      body: JSON.stringify(payload),
+      signal: controller.signal
+    });
+  } finally {
+    clearTimeout(timeoutId);
+  }
 
   if (!response.ok) {
     const detail = await response.text();
@@ -79,10 +89,114 @@ async function callAi(userPrompt) {
     temperature: config.temperature,
     max_tokens: config.maxTokens,
     response_format: { type: "json_object" },
-    stream: false
+    stream: false,
+    // disable chain-of-thought for qwen3.x thinking models
+    enable_thinking: false
   });
 
   return data?.choices?.[0]?.message?.content || "";
+}
+
+export async function checkAiConnection() {
+  const startedAt = Date.now();
+  const config = getAiConfig();
+  const content = await callAi(`Return only valid JSON:
+{
+  "ok": true,
+  "message": "pong"
+}`);
+  const parsed = extractJson(content);
+  return {
+    ok: Boolean(parsed.ok),
+    provider: config.provider,
+    model: config.model,
+    message: parsed.message || "",
+    durationMs: Date.now() - startedAt
+  };
+}
+
+export async function generateReactionBurst(message, count = 16, quotedContent = null, memoryContext = "") {
+  const safeCount = Math.max(8, Math.min(Number(count || 16), 16));
+  const batchSize = 8;
+  const batches = Math.ceil(safeCount / batchSize);
+  const fanMessages = [];
+
+  for (let batch = 0; batch < batches; batch++) {
+    const batchCount = Math.min(batchSize, safeCount - fanMessages.length);
+    if (batchCount <= 0) break;
+    const batchMessages = await generateReactionBurstBatch(message, batchCount, quotedContent, memoryContext, batch + 1, batches);
+    fanMessages.push(...batchMessages);
+  }
+
+  return fanMessages.slice(0, safeCount);
+}
+
+async function generateReactionBurstBatch(message, count = 8, quotedContent = null, memoryContext = "", batchNumber = 1, totalBatches = 1) {
+  const safeCount = Math.max(1, Math.min(Number(count || 8), 8));
+  const quotedLine = quotedContent
+    ? `\nThe idol also quoted this fan message in their post: "${String(quotedContent).slice(0, 200)}"\nSome fans should react to the quoted fan message too — jealousy, curiosity, wanting to be quoted next, etc.\n`
+    : "";
+  try {
+    const content = await callAi(`The idol just posted this bubble update: "${String(message || "").slice(0, 400)}"
+${quotedLine}
+Generate ${safeCount} fan reactions for batch ${batchNumber}/${totalBatches}. Make them feel like a real fan comment section exploding after an idol posts.
+
+Distribution rules (approximate):
+- 50% direct reactions to the idol's exact words/content
+- 15% over-interpretation / reading too much into it
+- 15% caring about idol's health/emotions
+- 10% fans relating it to their own life
+- 5% chaotic/absurd humor
+- 5% mild teasing / demanding more content
+${quotedContent ? "- Some fans should react to the quoted fan message (jealous, curious, wanting to be quoted next)" : ""}
+
+Critical rules:
+- Every message MUST be clearly inspired by the idol's specific words: "${String(message || "").slice(0, 200)}"
+- Do NOT generate generic "宝宝辛苦了" or "加油" type messages unless they directly reference the idol's content
+- Use wildly different personas, nicknames, languages, and emotional tones
+- Mix languages: ~50% zh, ~20% en, ~15% ko, ~10% jp, ~5% es
+- Keep each message short (max 80 chars)
+- messageKind must be "reaction" for all messages
+- Every fan message MUST include "usedMemoryIds": [] (empty array if no memory used)
+${memoryContext}
+JSON shape:
+{
+  "fanMessages": [
+    {
+      "fanName": "short nickname",
+      "avatar": "🐰",
+      "personaType": "comfort guardian",
+      "messageKind": "reaction",
+      "language": "zh",
+      "content": "short fan reaction directly referencing the idol's message",
+      "translatedContent": "简体中文翻译",
+      "usedMemoryIds": []
+    }
+  ]
+}`);
+    const parsed = extractJson(content);
+    const fanMessages = Array.isArray(parsed.fanMessages) ? parsed.fanMessages : [];
+    const normalized = fanMessages.slice(0, safeCount).map((item, index) =>
+      normalizeFanMessage(item, (batchNumber - 1) * 8 + index, "reaction")
+    );
+    if (!normalized.length) {
+      throw new Error("AI reaction burst returned no fanMessages.");
+    }
+    return normalized;
+  } catch (error) {
+    const config = getAiConfig();
+    logAiFailure({
+      operation: "generate_reaction_burst",
+      provider: config.provider,
+      model: config.model,
+      requestedCount: safeCount,
+      batchNumber,
+      totalBatches,
+      messageSnippet: String(message || "").slice(0, 120),
+      error
+    });
+    throw error;
+  }
 }
 
 export async function generateFanMessages(message, count = 4) {
@@ -161,7 +275,7 @@ JSON shape:
 }
 
 export async function generateLiveFanMessages(recentArtistMessage = "", count = 8) {
-  const safeCount = Math.max(1, Math.min(Number(count || 8), 12));
+  const safeCount = Math.max(1, Math.min(Number(count || 8), 30));
   try {
     const content = await callAi(`Generate ${safeCount} live incoming fan messages for a late-night idol bubble inbox.
 Context:

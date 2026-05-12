@@ -6,28 +6,28 @@ import MyBubbleStats from "@/components/MyBubbleStats";
 import { colors, spacing } from "@/constants/theme";
 import { useIdolMode } from "@/context/IdolModeContext";
 
-const faqs = ["What is Idol Mode?", "How do fan messages work?", "Can I edit my profile?"];
+const faqs = ["Idol Mode 是什么？", "粉丝消息是怎么生成的？", "可以编辑个人资料吗？"];
 
 export default function MoreScreen() {
-  const { myProfile } = useIdolMode();
+  const { myProfile, growthStats, fanMessages } = useIdolMode();
 
   return (
     <View style={styles.screen}>
       <View style={styles.header}>
-        <Text style={styles.title}>More</Text>
-        <IconButton name="settings-outline" accessibilityLabel="Open settings" onPress={() => router.push("/settings")} />
+        <Text style={styles.title}>更多</Text>
+        <IconButton name="settings-outline" accessibilityLabel="打开设置" onPress={() => router.push("/settings")} />
       </View>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
         <View style={styles.profile}>
           <Avatar label={myProfile.avatar} size={104} />
           <Text style={styles.name}>{myProfile.nickname}</Text>
-          <Text style={styles.email}>{myProfile.email}</Text>
+          <Text style={styles.email}>{myProfile.email || "未绑定邮箱"}</Text>
         </View>
 
-        <MyBubbleStats />
+        <MyBubbleStats growthStats={growthStats} fanMessageCount={fanMessages.length} />
 
         <View style={styles.faq}>
-          <Text style={styles.sectionTitle}>FAQ</Text>
+          <Text style={styles.sectionTitle}>常见问题</Text>
           {faqs.map((item) => (
             <View key={item} style={styles.faqRow}>
               <Text style={styles.faqText}>{item}</Text>

@@ -13,19 +13,19 @@ export default function ChatsScreen() {
   const lastForArtist = (artistId: string) => {
     const thread = idolThreads.find((item) => item.artistId === artistId);
     const messages = thread?.messages ?? [];
-    return messages.length ? messages[messages.length - 1].text : "No messages yet.";
+    return messages.length ? messages[messages.length - 1].text : "还没有消息。";
   };
 
   return (
     <View style={styles.screen}>
       <View style={styles.header}>
-        <Text style={styles.title}>Chats</Text>
+        <Text style={styles.title}>聊天</Text>
         <View style={styles.actions}>
-          <IconButton name="search-outline" accessibilityLabel="Search chats" />
+          <IconButton name="search-outline" accessibilityLabel="搜索聊天" />
           <IconButton
             name={deleteMode ? "checkmark-outline" : "trash-outline"}
             color={deleteMode ? colors.primaryDeep : colors.text}
-            accessibilityLabel="Delete bubble friends"
+            accessibilityLabel="管理 bubble 好友"
             onPress={() => setDeleteMode((value) => !value)}
           />
         </View>
@@ -35,12 +35,12 @@ export default function ChatsScreen() {
         <ChatListItem
           avatar={myProfile.avatar}
           name={myProfile.nickname}
-          lastMessage="Your artist room · send bubble updates"
+          lastMessage="你的艺人聊天室 · 发送营业消息"
           onPress={() => router.push("/self-chat")}
           backgroundColor={colors.secondary}
         />
 
-        <Text style={styles.sectionTitle}>bubble friends</Text>
+        <Text style={styles.sectionTitle}>bubble 好友</Text>
         <View style={styles.list}>
           {addedArtists.map((artist) => (
             <ChatListItem
@@ -54,7 +54,7 @@ export default function ChatsScreen() {
               backgroundColor={artist.background}
             />
           ))}
-          {addedArtists.length === 0 ? <Text style={styles.empty}>No bubble friends yet. Add artists from Friends.</Text> : null}
+          {addedArtists.length === 0 ? <Text style={styles.empty}>还没有 bubble 好友，去「好友」页添加艺人吧。</Text> : null}
         </View>
       </ScrollView>
     </View>

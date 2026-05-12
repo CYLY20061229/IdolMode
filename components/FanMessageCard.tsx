@@ -7,27 +7,51 @@ type FanMessageCardProps = {
   message: FanMessage;
   translated: boolean;
   onTranslate: () => void;
+  onLongPress?: () => void;
 };
 
-export default function FanMessageCard({ message, translated, onTranslate }: FanMessageCardProps) {
+// 语言标签映射
+const LANG_LABEL: Record<string, string> = {
+  zh: "中",
+  en: "EN",
+  ko: "KR",
+  jp: "JP",
+  es: "ES",
+};
+
+export default function FanMessageCard({ message, translated, onTranslate, onLongPress }: FanMessageCardProps) {
+  const isForeign = message.language !== "zh";
+  const displayText = translated && isForeign ? (message.translatedContent || message.content) : message.content;
+
   return (
-    <View style={styles.row}>
-      <Avatar label={message.avatar} size={38} backgroundColor={colors.blueSoft} />
-      <View style={styles.bubble}>
-        <View style={styles.top}>
-          <View style={styles.identity}>
-            <Text style={styles.name}>{message.fanName}</Text>
-            <Text style={styles.language}>{message.language.toUpperCase()}</Text>
-            {message.personaType ? <Text style={styles.persona}>{message.personaType}</Text> : null}
-            {message.messageKind === "reaction" ? <Text style={styles.kind}>reaction</Text> : null}
-          </View>
-          <Pressable onPress={onTranslate} style={({ pressed }) => [styles.translateButton, pressed && styles.pressed]}>
-            <Text style={styles.translateText}>{translated ? "Original" : "Translate"}</Text>
-          </Pressable>
+    <Pressable onLongPress={onLongPress} delayLongPress={280} style={styles.row}>
+      <Avatar label={message.avatar} size={36} backgroundColor={colors.blueSoft} />
+      <View style={styles.right}>
+        {/* 名字行：头像右侧，气泡上方 */}
+        <View style={styles.nameRow}>
+          <Text style={styles.name} numberOfLines={1}>{message.fanName}</Text>
+          {isForeign && (
+            <Text style={styles.langTag}>{LANG_LABEL[message.language] ?? message.language.toUpperCase()}</Text>
+          )}
         </View>
-        <Text style={styles.message}>{translated ? message.translatedContent : message.content}</Text>
+        {/* 气泡行：消息文本 + 翻译按钮 */}
+        <View style={styles.bubbleRow}>
+          <View style={styles.bubble}>
+            <Text style={styles.message}>{displayText}</Text>
+          </View>
+          {/* 翻译按钮只对外文消息显示，独立于气泡外避免事件冲突 */}
+          {isForeign && (
+            <Pressable
+              onPress={onTranslate}
+              hitSlop={8}
+              style={({ pressed }) => [styles.translateButton, pressed && styles.pressed]}
+            >
+              <Text style={styles.translateText}>{translated ? "原文" : "译"}</Text>
+            </Pressable>
+          )}
+        </View>
       </View>
-    </View>
+    </Pressable>
   );
 }
 
@@ -35,80 +59,70 @@ const styles = StyleSheet.create({
   row: {
     flexDirection: "row",
     alignItems: "flex-start",
-    gap: 10,
-    marginBottom: 11
+    gap: 8,
+    marginBottom: 12,
+    paddingHorizontal: 2,
+  },
+  right: {
+    flex: 1,
+    flexDirection: "column",
+    gap: 3,
+  },
+  nameRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    paddingLeft: 2,
+  },
+  name: {
+    color: colors.mutedText,
+    fontSize: 12,
+    fontWeight: "600",
+    flexShrink: 1,
+  },
+  langTag: {
+    color: colors.primaryDeep,
+    fontSize: 10,
+    fontWeight: "800",
+    flexShrink: 0,
+  },
+  bubbleRow: {
+    flexDirection: "row",
+    alignItems: "flex-end",
+    gap: 6,
   },
   bubble: {
     backgroundColor: colors.card,
-    borderRadius: 22,
-    borderBottomLeftRadius: 8,
+    borderRadius: 18,
+    borderBottomLeftRadius: 5,
     borderWidth: 1,
     borderColor: colors.border,
     paddingHorizontal: 13,
-    paddingVertical: 10,
-    maxWidth: "82%",
-    minWidth: 138,
-    alignSelf: "flex-start"
-  },
-  top: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    justifyContent: "space-between",
-    gap: 8,
-    marginBottom: 6
-  },
-  identity: {
-    flexDirection: "row",
-    alignItems: "center",
-    flexWrap: "wrap",
-    gap: 7,
-    flexShrink: 1
-  },
-  name: {
-    color: colors.text,
-    fontSize: 13,
-    fontWeight: "900"
-  },
-  language: {
-    color: colors.primaryDeep,
-    fontSize: 10,
-    fontWeight: "900"
-  },
-  persona: {
-    color: colors.mutedText,
-    fontSize: 10,
-    fontWeight: "800"
-  },
-  kind: {
-    overflow: "hidden",
-    borderRadius: 999,
-    backgroundColor: colors.secondary,
-    color: colors.primaryDeep,
-    fontSize: 9,
-    fontWeight: "900",
-    paddingHorizontal: 6,
-    paddingVertical: 2
+    paddingVertical: 9,
+    flexShrink: 1,
+    alignSelf: "flex-start",
   },
   message: {
     color: colors.text,
     fontSize: 14,
     lineHeight: 20,
-    flexShrink: 1
   },
   translateButton: {
     borderRadius: 999,
     backgroundColor: colors.background,
-    paddingHorizontal: 9,
-    paddingVertical: 5,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
     borderWidth: 1,
-    borderColor: colors.border
+    borderColor: colors.border,
+    flexShrink: 0,
+    marginBottom: 2,
   },
   translateText: {
     color: colors.primaryDeep,
     fontSize: 10,
-    fontWeight: "900"
+    fontWeight: "900",
   },
   pressed: {
-    opacity: 0.65
-  }
+    opacity: 0.55,
+  },
 });

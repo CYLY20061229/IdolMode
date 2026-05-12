@@ -5,29 +5,28 @@ import IconButton from "@/components/IconButton";
 import PrimaryButton from "@/components/PrimaryButton";
 import { colors, spacing } from "@/constants/theme";
 import { useIdolMode } from "@/context/IdolModeContext";
-import { recommendedArtists } from "@/services/mockData";
 
 export default function ArtistDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { addArtist, isArtistAdded } = useIdolMode();
+  const { addArtist, isArtistAdded, recommendedArtists } = useIdolMode();
   const artist = recommendedArtists.find((item) => item.id === id) ?? recommendedArtists[0];
   const added = isArtistAdded(artist.id);
 
   return (
     <View style={styles.screen}>
       <View style={styles.back}>
-        <IconButton name="chevron-back" accessibilityLabel="Back" onPress={() => router.back()} />
+        <IconButton name="chevron-back" accessibilityLabel="返回" onPress={() => router.back()} />
       </View>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
         <ArtistHeader artist={artist} />
         <View style={styles.infoCard}>
-          <Text style={styles.label}>About</Text>
+          <Text style={styles.label}>关于</Text>
           <Text style={styles.intro}>{artist.intro}</Text>
         </View>
       </ScrollView>
       <View style={styles.footer}>
         <PrimaryButton
-          title={added ? "Added" : "Add bubble friend"}
+          title={added ? "已添加" : "添加为 bubble 好友"}
           disabled={added}
           onPress={() => addArtist(artist)}
           variant={added ? "light" : "primary"}

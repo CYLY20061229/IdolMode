@@ -6,10 +6,12 @@ const apiBaseUrl = process.env.EXPO_PUBLIC_IDOL_MODE_API_URL?.replace(/\/$/, "")
 
 const USER_ID_KEY = "idol_mode_user_id";
 const DEVICE_ID_KEY = "idol_mode_device_id";
+const SESSION_TOKEN_KEY = "idol_mode_session_token";
 
 // ── internal helpers ──────────────────────────────────────────────────────────
 
 let cachedUserId: string | null = null;
+let cachedSessionToken: string | null = null;
 
 async function getOrCreateDeviceId(): Promise<string> {
   let deviceId = await AsyncStorage.getItem(DEVICE_ID_KEY);
@@ -33,24 +35,67 @@ export async function getUserId(): Promise<string> {
   return "";
 }
 
+export async function getSessionToken(): Promise<string> {
+  if (cachedSessionToken) return cachedSessionToken;
+  const stored = await AsyncStorage.getItem(SESSION_TOKEN_KEY);
+  if (stored) {
+    cachedSessionToken = stored;
+    return stored;
+  }
+  return "";
+}
+
 async function storeUserId(userId: string): Promise<void> {
   cachedUserId = userId;
   await AsyncStorage.setItem(USER_ID_KEY, userId);
+}
+
+async function storeSessionToken(sessionToken: string): Promise<void> {
+  cachedSessionToken = sessionToken;
+  await AsyncStorage.setItem(SESSION_TOKEN_KEY, sessionToken);
 }
 
 function isApiAvailable(): boolean {
   return Boolean(apiBaseUrl);
 }
 
-async function apiFetch(path: string, options: RequestInit = {}): Promise<Response> {
+function isLocalMediaUri(value?: string): boolean {
+  return Boolean(value && /^(file|content|blob|data):/.test(value));
+}
+
+function avatarFallbackFromNickname(profile: Profile): string {
+  return (profile.nickname || "新").slice(0, 2).toUpperCase();
+}
+
+function profileForApi(profile: Profile): Profile {
+  return {
+    ...profile,
+    avatar: isLocalMediaUri(profile.avatar) ? avatarFallbackFromNickname(profile) : profile.avatar
+  };
+}
+
+function messageForApi(message: ChatMessage): ChatMessage {
+  if (!isLocalMediaUri(message.attachmentUri)) return message;
+  return {
+    ...message,
+    attachmentUri: undefined
+  };
+}
+
+export async function apiFetch(path: string, options: RequestInit = {}): Promise<Response> {
   const userId = await getUserId();
+  const sessionToken = await getSessionToken();
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
     ...(options.headers as Record<string, string>)
   };
-  if (userId) {
+
+  if (sessionToken) {
+    headers.Authorization = `Bearer ${sessionToken}`;
+  } else if (userId) {
     headers["X-User-Id"] = userId;
   }
+
   return fetch(`${apiBaseUrl}${path}`, { ...options, headers });
 }
 
@@ -74,6 +119,15 @@ export type BootstrapData = {
 export async function authDevice(): Promise<string | null> {
   if (!isApiAvailable()) return null;
   try {
+    const existingSessionToken = await getSessionToken();
+    if (existingSessionToken) {
+      const session = await fetchAuthSession();
+      if (session?.userId) {
+        await storeUserId(session.userId);
+        return session.userId;
+      }
+    }
+
     const deviceId = await getOrCreateDeviceId();
     const res = await fetch(`${apiBaseUrl}/auth/device`, {
       method: "POST",
@@ -81,15 +135,45 @@ export async function authDevice(): Promise<string | null> {
       body: JSON.stringify({ deviceId, platform: "ios" })
     });
     if (!res.ok) return null;
-    const data = await res.json() as { user?: { id?: string } };
+    const data = await res.json() as { user?: { id?: string }; sessionToken?: string };
     const userId = data?.user?.id;
     if (userId) {
       await storeUserId(userId);
+      if (data.sessionToken) {
+        await storeSessionToken(data.sessionToken);
+      }
       return userId;
     }
     return null;
   } catch {
     return null;
+  }
+}
+
+export async function fetchAuthSession(): Promise<(BootstrapData & { userId: string }) | null> {
+  if (!isApiAvailable()) return null;
+  const sessionToken = await getSessionToken();
+  if (!sessionToken) return null;
+
+  try {
+    const res = await apiFetch("/auth/session");
+    if (!res.ok) return null;
+    return (await res.json()) as BootstrapData & { userId: string };
+  } catch {
+    return null;
+  }
+}
+
+export async function logoutDeviceSession(): Promise<void> {
+  if (!isApiAvailable()) return;
+  try {
+    await apiFetch("/auth/logout", { method: "POST" });
+  } catch {
+    // silent
+  } finally {
+    cachedSessionToken = null;
+    cachedUserId = null;
+    await AsyncStorage.multiRemove([SESSION_TOKEN_KEY, USER_ID_KEY]);
   }
 }
 
@@ -101,8 +185,9 @@ export async function authDevice(): Promise<string | null> {
  */
 export async function fetchBootstrap(): Promise<BootstrapData | null> {
   if (!isApiAvailable()) return null;
+  const sessionToken = await getSessionToken();
   const userId = await getUserId();
-  if (!userId) return null;
+  if (!sessionToken && !userId) return null;
   try {
     const res = await apiFetch("/me/bootstrap");
     if (!res.ok) return null;
@@ -118,12 +203,15 @@ export async function fetchBootstrap(): Promise<BootstrapData | null> {
 export async function apiUpdateProfile(profile: Profile): Promise<void> {
   if (!isApiAvailable()) return;
   try {
-    await apiFetch("/me/profile", {
+    const response = await apiFetch("/me/profile", {
       method: "PUT",
-      body: JSON.stringify({ profile })
+      body: JSON.stringify({ profile: profileForApi(profile) })
     });
+    if (!response.ok) {
+      console.warn("Profile sync failed.", response.status);
+    }
   } catch {
-    // silent — local state already updated optimistically
+    console.warn("Profile sync failed.");
   }
 }
 
@@ -132,54 +220,76 @@ export async function apiUpdateProfile(profile: Profile): Promise<void> {
 export async function apiAddFriend(artistId: string): Promise<void> {
   if (!isApiAvailable()) return;
   try {
-    await apiFetch("/me/friends", {
+    const response = await apiFetch("/me/friends", {
       method: "POST",
       body: JSON.stringify({ artistId })
     });
+    if (!response.ok) {
+      console.warn("Add friend sync failed.", response.status);
+    }
   } catch {
-    // silent
+    console.warn("Add friend sync failed.");
   }
 }
 
 export async function apiRemoveFriend(artistId: string): Promise<void> {
   if (!isApiAvailable()) return;
   try {
-    await apiFetch(`/me/friends/${encodeURIComponent(artistId)}`, {
+    const response = await apiFetch(`/me/friends/${encodeURIComponent(artistId)}`, {
       method: "DELETE"
     });
+    if (!response.ok) {
+      console.warn("Remove friend sync failed.", response.status);
+    }
   } catch {
-    // silent
+    console.warn("Remove friend sync failed.");
   }
 }
 
 // ── self messages ─────────────────────────────────────────────────────────────
 
-export async function apiCreateSelfMessage(message: ChatMessage): Promise<void> {
-  if (!isApiAvailable()) return;
+export async function apiCreateSelfMessage(message: ChatMessage): Promise<boolean> {
+  if (!isApiAvailable()) return false;
+  const safeMessage = messageForApi(message);
   try {
-    await apiFetch("/me/self-messages", {
+    const response = await apiFetch("/me/self-messages", {
       method: "POST",
       body: JSON.stringify({
-        id: message.id,
-        text: message.text,
-        status: message.status,
-        createdAt: message.createdAt
+        id: safeMessage.id,
+        text: safeMessage.text,
+        status: safeMessage.status,
+        createdAt: safeMessage.createdAt,
+        attachmentType: safeMessage.attachmentType,
+        attachmentUri: safeMessage.attachmentUri,
+        quotedFanMessage: safeMessage.quotedFanMessage
       })
     });
+    if (!response.ok) {
+      console.warn("Create self message sync failed.", response.status);
+      return false;
+    }
+    return true;
   } catch {
-    // silent
+    console.warn("Create self message sync failed.");
+    return false;
   }
 }
 
-export async function apiUpdateSelfMessageStatus(messageId: string, status: string): Promise<void> {
-  if (!isApiAvailable()) return;
+export async function apiUpdateSelfMessageStatus(messageId: string, status: string): Promise<boolean> {
+  if (!isApiAvailable()) return false;
   try {
-    await apiFetch(`/me/self-messages/${encodeURIComponent(messageId)}`, {
+    const response = await apiFetch(`/me/self-messages/${encodeURIComponent(messageId)}`, {
       method: "PATCH",
       body: JSON.stringify({ status })
     });
+    if (!response.ok) {
+      console.warn("Update self message status sync failed.", response.status);
+      return false;
+    }
+    return true;
   } catch {
-    // silent
+    console.warn("Update self message status sync failed.");
+    return false;
   }
 }
 
@@ -187,12 +297,16 @@ export async function apiUpdateSelfMessageStatus(messageId: string, status: stri
 
 export async function apiCreateIdolChatMessage(artistId: string, message: ChatMessage): Promise<void> {
   if (!isApiAvailable()) return;
+  const safeMessage = messageForApi(message);
   try {
-    await apiFetch("/me/idol-chat-messages", {
+    const response = await apiFetch("/me/idol-chat-messages", {
       method: "POST",
-      body: JSON.stringify({ artistId, message })
+      body: JSON.stringify({ artistId, message: safeMessage })
     });
+    if (!response.ok) {
+      console.warn("Idol chat message sync failed.", response.status);
+    }
   } catch {
-    // silent
+    console.warn("Idol chat message sync failed.");
   }
 }
