@@ -8,7 +8,7 @@
       "developmentClient": true,
       "distribution": "internal",
       "env": {
-        "EXPO_PUBLIC_IDOL_MODE_API_URL": "http://120.26.238.175.idir.cn"
+        "EXPO_PUBLIC_IDOL_MODE_API_URL": "https://120.26.238.175.idir.cn"
       },
       "android": {
         "buildType": "apk"
@@ -17,7 +17,7 @@
     "preview": {
       "distribution": "internal",
       "env": {
-        "EXPO_PUBLIC_IDOL_MODE_API_URL": "http://120.26.238.175.idir.cn"
+        "EXPO_PUBLIC_IDOL_MODE_API_URL": "https://120.26.238.175.idir.cn"
       },
       "android": {
         "buildType": "apk"
@@ -28,7 +28,7 @@
     },
     "production": {
       "env": {
-        "EXPO_PUBLIC_IDOL_MODE_API_URL": "http://120.26.238.175.idir.cn"
+        "EXPO_PUBLIC_IDOL_MODE_API_URL": "https://120.26.238.175.idir.cn"
       },
       "android": {
         "buildType": "app-bundle"

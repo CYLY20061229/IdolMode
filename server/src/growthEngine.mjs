@@ -51,19 +51,10 @@ function daysBetween(a, b) {
  * @param {number}  params.currentBV    - 当前 dailyBusinessValue
  * @returns {number} 实际增量（已考虑上限）
  */
-export function calcBusinessValueDelta({ text, attachmentType, isFirstToday, currentBV }) {
+export function calcBusinessValueDelta({ currentBV }) {
   if (currentBV >= MAX_DAILY_BV) return 0;
 
-  let delta = 0;
-
-  if (attachmentType === "background" || attachmentType === "sticker") {
-    delta += 18; // 发图片
-  } else {
-    const len = String(text || "").trim().length;
-    delta += len > 40 ? 15 : 10; // 长文字 +15，普通 +10
-  }
-
-  if (isFirstToday) delta += 10; // 每日第一次额外 +10
+  const delta = 5;
 
   // 不超过上限
   return Math.min(delta, MAX_DAILY_BV - currentBV);

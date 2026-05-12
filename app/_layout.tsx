@@ -31,6 +31,7 @@ function AppNavigator() {
       <Stack.Screen name="settings" />
       <Stack.Screen name="my-profile" />
       <Stack.Screen name="my-memories" />
+      <Stack.Screen name="api-diagnostics" />
     </Stack>
   );
 }
