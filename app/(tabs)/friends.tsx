@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Modal, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Alert, Modal, ScrollView, StyleSheet, Text, View } from "react-native";
 import { router } from "expo-router";
 import { Avatar } from "@/components/Avatar";
 import ArtistCard from "@/components/ArtistCard";
@@ -8,7 +8,8 @@ import PrimaryButton from "@/components/PrimaryButton";
 import ProfileCard from "@/components/ProfileCard";
 import { colors, spacing } from "@/constants/theme";
 import { useIdolMode } from "@/context/IdolModeContext";
-import { pickLocalImage } from "@/services/localMedia";
+import { pickProfileAvatarImage } from "@/services/localMedia";
+import { uploadImageToOss } from "@/services/uploadApi";
 
 export default function FriendsScreen() {
   const { myProfile, updateProfile, recommendedArtists } = useIdolMode();
@@ -16,16 +17,36 @@ export default function FriendsScreen() {
   const [nickname, setNickname] = useState(myProfile.nickname);
   const [signature, setSignature] = useState(myProfile.signature);
   const [avatar, setAvatar] = useState(myProfile.avatar);
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
 
-  const saveProfile = () => {
-    const isImageAvatar = /^(file|content|data|https?):/.test(avatar);
-    updateProfile({ ...myProfile, nickname, signature, avatar: isImageAvatar ? avatar : avatar.slice(0, 3).toUpperCase() || "我" });
-    setEditing(false);
+  const saveProfile = async () => {
+    if (uploadingAvatar) {
+      Alert.alert("头像上传中", "请等头像上传完成后再保存。");
+      return;
+    }
+    const isImageAvatar = /^(https?):/.test(avatar);
+    try {
+      await updateProfile({ ...myProfile, nickname, signature, avatar: isImageAvatar ? avatar : avatar.slice(0, 3).toUpperCase() || "我" });
+      setEditing(false);
+    } catch (error) {
+      Alert.alert("保存失败", error instanceof Error ? error.message : "资料没有保存成功，请稍后再试。");
+    }
   };
 
   const pickAvatar = async () => {
-    const uri = await pickLocalImage();
-    if (uri) setAvatar(uri);
+    const uri = await pickProfileAvatarImage();
+    if (!uri || uploadingAvatar) return;
+    setAvatar(uri);
+    setUploadingAvatar(true);
+    try {
+      const publicUrl = await uploadImageToOss(uri, "avatar");
+      setAvatar(publicUrl);
+    } catch {
+      Alert.alert("上传失败", "头像没有上传成功，请重新选择。");
+      setAvatar(myProfile.avatar);
+    } finally {
+      setUploadingAvatar(false);
+    }
   };
 
   return (
@@ -55,10 +76,10 @@ export default function FriendsScreen() {
               <Avatar label={avatar} size={72} />
               <View style={styles.avatarEditText}>
                 <Text style={styles.avatarLabel}>头像</Text>
-                <Text style={styles.avatarHint}>可以使用本地图片，第一版会保存在当前设备。</Text>
+                <Text style={styles.avatarHint}>头像会上传到云端，并在不同设备保持一致。</Text>
               </View>
             </View>
-            <PrimaryButton title="选择本地头像" onPress={pickAvatar} variant="light" />
+            <PrimaryButton title={uploadingAvatar ? "头像上传中…" : "选择头像"} onPress={pickAvatar} variant="light" />
             <PrimaryButton title="保存" onPress={saveProfile} />
             <PrimaryButton title="取消" onPress={() => setEditing(false)} variant="light" />
           </View>

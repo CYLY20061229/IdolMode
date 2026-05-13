@@ -6,7 +6,7 @@ export const myProfile: Profile = {
   signature: "今晚也在练习。",
   email: "",
   avatar: "月",
-  gender: "",
+  gender: "female",
   age: null
 };
 

@@ -15,6 +15,7 @@ export default function FanMessageTicker({ messages, onPressMessage }: FanMessag
 
   // 取最新的消息做轮播（最后 20 条里循环）
   const pool = messages.slice(-20);
+  const expandedPool = messages.slice(-12);
 
   useEffect(() => {
     if (pool.length < 2) return;
@@ -25,7 +26,11 @@ export default function FanMessageTicker({ messages, onPressMessage }: FanMessag
   }, [pool.length]);
 
   // 展开时显示最新 5 条（倒序：最新在最上面）
-  const latest5 = messages.slice(-5).reverse();
+  const expandedStart = expandedPool.length ? index % expandedPool.length : 0;
+  const rolling5 = Array.from({ length: Math.min(5, expandedPool.length) }, (_, offset) => {
+    const position = (expandedStart + offset) % expandedPool.length;
+    return expandedPool[position];
+  }).reverse();
   const current = pool[index % Math.max(pool.length, 1)];
 
   if (messages.length === 0) return null;
@@ -48,7 +53,7 @@ export default function FanMessageTicker({ messages, onPressMessage }: FanMessag
         </Pressable>
       )}
 
-      {/* 展开状态：最新 5 条 + 关闭按钮 */}
+      {/* 展开状态：5 条消息自动滑动轮播 + 关闭按钮 */}
       {expanded && (
         <View>
           <View style={styles.expandedHeader}>
@@ -58,7 +63,7 @@ export default function FanMessageTicker({ messages, onPressMessage }: FanMessag
             </Pressable>
           </View>
           <View style={styles.list}>
-            {latest5.map((message) => (
+            {rolling5.map((message) => (
               <Pressable key={message.id} onPress={onPressMessage} style={styles.line}>
                 <Text style={styles.fan}>{message.fanName}</Text>
                 <Text numberOfLines={2} style={styles.content}>{message.content}</Text>

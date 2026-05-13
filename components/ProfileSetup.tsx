@@ -14,7 +14,7 @@ const genderOptions: Array<{ label: string; value: NonNullable<Profile["gender"]
 
 export default function ProfileSetup() {
   const { myProfile, updateProfile } = useIdolMode();
-  const [gender, setGender] = useState<Profile["gender"]>(myProfile.gender || "");
+  const [gender, setGender] = useState<Profile["gender"]>(myProfile.gender || "female");
   const [ageText, setAgeText] = useState(myProfile.age ? String(myProfile.age) : "");
   const [nickname, setNickname] = useState(myProfile.nickname === "New Idol" || myProfile.nickname === "新艺人" ? "" : myProfile.nickname);
 
@@ -31,6 +31,8 @@ export default function ProfileSetup() {
       avatar: nextNickname.slice(0, 2).toUpperCase(),
       gender,
       age
+    }).catch(() => {
+      // Keep the setup screen open; profile save errors are surfaced in full edit screens.
     });
   };
 

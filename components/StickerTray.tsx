@@ -1,7 +1,9 @@
-import { Image, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { useState } from "react";
+import { Alert, Image, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { colors } from "@/constants/theme";
 import { pickLocalImage } from "@/services/localMedia";
+import { uploadImageToOss } from "@/services/uploadApi";
 
 type StickerTrayProps = {
   stickerUris: string[];
@@ -11,16 +13,27 @@ type StickerTrayProps = {
 };
 
 export default function StickerTray({ stickerUris, onAddSticker, onSendSticker, dark }: StickerTrayProps) {
+  const [uploading, setUploading] = useState(false);
+
   const add = async () => {
     const uri = await pickLocalImage();
-    if (uri) onAddSticker(uri);
+    if (!uri || uploading) return;
+    setUploading(true);
+    try {
+      const publicUrl = await uploadImageToOss(uri, "sticker");
+      onAddSticker(publicUrl);
+    } catch {
+      Alert.alert("上传失败", "表情包没有上传成功，请稍后再试。");
+    } finally {
+      setUploading(false);
+    }
   };
 
   return (
     <View style={[styles.wrap, dark && styles.darkWrap]}>
-      <Pressable onPress={add} style={[styles.addButton, dark && styles.darkAddButton]}>
+      <Pressable onPress={uploading ? undefined : add} style={[styles.addButton, dark && styles.darkAddButton, uploading && styles.disabled]}>
         <Ionicons name="add" size={22} color={dark ? colors.card : colors.primaryDeep} />
-        <Text style={[styles.addText, dark && styles.darkText]}>添加表情包</Text>
+        <Text style={[styles.addText, dark && styles.darkText]}>{uploading ? "上传中..." : "添加表情包"}</Text>
       </Pressable>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.list}>
         {stickerUris.map((uri) => (
@@ -56,6 +69,9 @@ const styles = StyleSheet.create({
   },
   darkAddButton: {
     backgroundColor: colors.nightCard
+  },
+  disabled: {
+    opacity: 0.55
   },
   addText: {
     color: colors.primaryDeep,

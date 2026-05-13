@@ -7,7 +7,8 @@ import SettingsRow from "@/components/SettingsRow";
 import { colors, spacing } from "@/constants/theme";
 import { useIdolMode } from "@/context/IdolModeContext";
 import { logoutDeviceSession } from "@/services/apiClient";
-import { pickLocalImage } from "@/services/localMedia";
+import { pickProfileAvatarImage } from "@/services/localMedia";
+import { uploadImageToOss } from "@/services/uploadApi";
 
 // ── 编辑资料弹窗 ──────────────────────────────────────────────────────────────
 
@@ -18,25 +19,40 @@ function EditProfileModal({ visible, onClose }: { visible: boolean; onClose: () 
   const [statusText, setStatusText] = useState(myProfile.statusText || "");
   const [avatar, setAvatar] = useState(myProfile.avatar || "");
   const [saving, setSaving] = useState(false);
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
 
   const pickAvatar = async () => {
-    const uri = await pickLocalImage();
-    if (uri) setAvatar(uri);
+    const uri = await pickProfileAvatarImage();
+    if (!uri || uploadingAvatar) return;
+    setAvatar(uri);
+    setUploadingAvatar(true);
+    try {
+      const publicUrl = await uploadImageToOss(uri, "avatar");
+      setAvatar(publicUrl);
+    } catch {
+      Alert.alert("上传失败", "头像没有上传成功，请重新选择。");
+      setAvatar(myProfile.avatar || "");
+    } finally {
+      setUploadingAvatar(false);
+    }
   };
 
   const handleSave = async () => {
     if (!nickname.trim()) return;
     setSaving(true);
     try {
-      const isImageAvatar = /^(file|content|data|https?):/.test(avatar);
-      await updateProfile({
+      const isImageAvatar = /^(https?):/.test(avatar);
+      const savedProfile = await updateProfile({
         ...myProfile,
         nickname: nickname.trim(),
         signature: signature.trim(),
         statusText: statusText.trim(),
         avatar: isImageAvatar ? avatar : (avatar.slice(0, 3).toUpperCase() || "我")
       });
+      setAvatar(savedProfile.avatar || "");
       onClose();
+    } catch (error) {
+      Alert.alert("保存失败", error instanceof Error ? error.message : "资料没有保存成功，请稍后再试。");
     } finally {
       setSaving(false);
     }
@@ -50,10 +66,10 @@ function EditProfileModal({ visible, onClose }: { visible: boolean; onClose: () 
 
           {/* 头像选择 */}
           <View style={modal.avatarRow}>
-            <Pressable onPress={pickAvatar} style={modal.avatarBtn}>
+            <Pressable onPress={uploadingAvatar ? undefined : pickAvatar} style={[modal.avatarBtn, uploadingAvatar && modal.uploading]}>
               <Avatar label={avatar || "我"} size={64} backgroundColor={colors.secondary} />
               <View style={modal.avatarOverlay}>
-                <Text style={modal.avatarOverlayText}>换头像</Text>
+                <Text style={modal.avatarOverlayText}>{uploadingAvatar ? "上传中" : "换头像"}</Text>
               </View>
             </Pressable>
           </View>
@@ -95,9 +111,9 @@ function EditProfileModal({ visible, onClose }: { visible: boolean; onClose: () 
           <Pressable
             style={[modal.btn, saving && modal.btnDisabled]}
             onPress={handleSave}
-            disabled={saving}
+            disabled={saving || uploadingAvatar}
           >
-            <Text style={modal.btnText}>{saving ? "保存中…" : "保存"}</Text>
+            <Text style={modal.btnText}>{saving ? "保存中…" : uploadingAvatar ? "头像上传中…" : "保存"}</Text>
           </Pressable>
           <Pressable style={modal.cancel} onPress={onClose}>
             <Text style={modal.cancelText}>取消</Text>
@@ -382,6 +398,9 @@ const modal = StyleSheet.create({
   },
   avatarBtn: {
     position: "relative"
+  },
+  uploading: {
+    opacity: 0.65
   },
   avatarOverlay: {
     position: "absolute",

@@ -5,10 +5,11 @@ import { isDbEnabled } from "./db.mjs";
 import { pool } from "./db/pool.mjs";
 import { loadEnvFiles } from "./env.mjs";
 import { logError, logRequest, logSlowRequest } from "./logger.mjs";
+import { createOssPutSignature } from "./oss.mjs";
 import { rateLimit, rateLimitAi } from "./rateLimit.mjs";
 import { getAmbientMessages, warmUp } from "./ambientPool.mjs";
 import { extractAndSaveMemories, buildMemoryContext } from "./memoryExtractor.mjs";
-import { calcBusinessValueDelta, getReactionCount, todayCST } from "./growthEngine.mjs";
+import { calcBusinessValueDelta, DAILY_SELF_MESSAGE_LIMIT, getReactionCount, todayCST } from "./growthEngine.mjs";
 import {
   addArtistFriend,
   addBusinessValue,
@@ -16,6 +17,7 @@ import {
   archiveStaleMemories,
   cleanReactionCache,
   createAiGenerationJob,
+  countSentSelfMessagesForDate,
   createFanMessages,
   createIdolChatMessage,
   createReactionCacheSlot,
@@ -324,31 +326,6 @@ const server = http.createServer(async (req, res) => {
       if (!userId) return;
       const message = await createSelfMessage(userId, body.message || body);
 
-      // 异步触发记忆抽取
-      if (message?.text) {
-        extractAndSaveMemories(userId, message.text, message.id).catch(() => {});
-      }
-
-      // 异步更新营业值
-      if (isDbEnabled()) {
-        (async () => {
-          try {
-            const today = todayCST();
-            const stats = await getOrCreateGrowthStats(userId);
-            const isFirstToday = stats?.lastActiveDate !== today;
-            const delta = calcBusinessValueDelta({
-              text: message?.text ?? "",
-              attachmentType: body.message?.attachmentType ?? body.attachmentType,
-              isFirstToday,
-              currentBV: stats?.dailyBusinessValue ?? 0
-            });
-            if (delta > 0) {
-              await addBusinessValue(userId, delta, today);
-            }
-          } catch {/* 营业值更新失败不影响主流程 */}
-        })();
-      }
-
       sendJson(req, res, 200, { message, requestId: id });
       return;
     }
@@ -358,7 +335,39 @@ const server = http.createServer(async (req, res) => {
       const body = await readJson(req);
       const userId = await requireDatabaseUser(req, res, id, body);
       if (!userId) return;
+      const today = todayCST();
+      if (body.status === "sent") {
+        const sentToday = await countSentSelfMessagesForDate(userId, today);
+        if (sentToday >= DAILY_SELF_MESSAGE_LIMIT) {
+          sendJson(req, res, 429, {
+            error: "DAILY_SELF_MESSAGE_LIMIT_REACHED",
+            message: "明天再来吧，留点神秘感。",
+            limit: DAILY_SELF_MESSAGE_LIMIT,
+            requestId: id
+          });
+          return;
+        }
+      }
       const message = await updateSelfMessageStatus(userId, decodeURIComponent(selfMessageMatch[1]), body.status);
+
+      if (body.status === "sent" && isDbEnabled()) {
+        if (message?.text) {
+          extractAndSaveMemories(userId, message.text, message.id).catch(() => {});
+        }
+
+        (async () => {
+          try {
+            const stats = await getOrCreateGrowthStats(userId);
+            const delta = calcBusinessValueDelta({
+              currentBV: stats?.dailyBusinessValue ?? 0
+            });
+            if (delta > 0) {
+              await addBusinessValue(userId, delta, today);
+            }
+          } catch {/* 营业值更新失败不影响主流程 */}
+        })();
+      }
+
       sendJson(req, res, 200, { message, requestId: id });
       return;
     }
@@ -386,6 +395,29 @@ const server = http.createServer(async (req, res) => {
       if (!userId) return;
       const message = await createIdolChatMessage(userId, body.artistId, body.message || body);
       sendJson(req, res, 200, { message, requestId: id });
+      return;
+    }
+
+    if (req.method === "POST" && url.pathname === "/uploads/sign") {
+      const body = await readJson(req);
+      const userId = await requireDatabaseUser(req, res, id, body);
+      if (!userId) return;
+      let upload;
+      try {
+        upload = createOssPutSignature({
+          userId,
+          kind: body.kind,
+          mimeType: body.mimeType
+        });
+      } catch (error) {
+        sendJson(req, res, 500, {
+          error: "OSS_UPLOAD_NOT_CONFIGURED",
+          message: error instanceof Error ? error.message : "OSS upload is not configured.",
+          requestId: id
+        });
+        return;
+      }
+      sendJson(req, res, 200, { upload, requestId: id });
       return;
     }
 

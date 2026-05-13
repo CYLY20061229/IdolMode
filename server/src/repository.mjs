@@ -8,7 +8,7 @@ function rowToProfile(row) {
     signature: row.signature,
     email: row.email,
     avatar: row.avatar,
-    gender: row.gender || "",
+    gender: row.gender || "female",
     age: row.age ?? null,
     statusText: row.status_text ?? undefined,
     backgroundImage: row.background_image ?? undefined
@@ -35,7 +35,9 @@ function rowToSelfMessage(row) {
     sender: "self",
     text: row.text,
     status: row.status,
-    createdAt: row.display_time || formatTime(row.created_at)
+    createdAt: row.display_time || formatTime(row.created_at),
+    attachmentType: row.attachment_type || undefined,
+    attachmentUri: row.attachment_uri || undefined
   };
 }
 
@@ -58,7 +60,9 @@ function rowToIdolChatMessage(row) {
     id: row.id,
     sender: row.sender,
     text: row.text,
-    createdAt: row.display_time || formatTime(row.created_at)
+    createdAt: row.display_time || formatTime(row.created_at),
+    attachmentType: row.attachment_type || undefined,
+    attachmentUri: row.attachment_uri || undefined
   };
 }
 
@@ -119,7 +123,7 @@ export async function updateProfile(userId, profile) {
        gender = COALESCE($6, gender),
        age = COALESCE($7, age),
        status_text = COALESCE($8, status_text),
-       background_image = COALESCE($9, background_image),
+       background_image = $9,
        updated_at = now()
      WHERE user_id = $1
      RETURNING user_id, nickname, signature, email, avatar, gender, age, status_text, background_image`,
@@ -189,15 +193,25 @@ export async function removeArtistFriend(userId, artistId) {
 
 export async function createSelfMessage(userId, message) {
   const result = await query(
-    `INSERT INTO self_messages (id, user_id, text, status, display_time, sent_at)
-     VALUES ($1, $2, $3, $4, $5, CASE WHEN $4 = 'sent' THEN now() ELSE NULL END)
+    `INSERT INTO self_messages (id, user_id, text, status, display_time, sent_at, attachment_type, attachment_uri)
+     VALUES ($1, $2, $3, $4, $5, CASE WHEN $4 = 'sent' THEN now() ELSE NULL END, $6, $7)
      ON CONFLICT (id) DO UPDATE SET
        text = EXCLUDED.text,
        status = EXCLUDED.status,
        display_time = EXCLUDED.display_time,
-       sent_at = COALESCE(self_messages.sent_at, EXCLUDED.sent_at)
+       sent_at = COALESCE(self_messages.sent_at, EXCLUDED.sent_at),
+       attachment_type = EXCLUDED.attachment_type,
+       attachment_uri = EXCLUDED.attachment_uri
      RETURNING *`,
-    [message.id, userId, message.text, message.status || "pending", message.createdAt || null]
+    [
+      message.id,
+      userId,
+      message.text,
+      message.status || "pending",
+      message.createdAt || null,
+      message.attachmentType || null,
+      message.attachmentUri || null
+    ]
   );
   return rowToSelfMessage(result.rows[0]);
 }
@@ -221,6 +235,18 @@ export async function findSelfMessage(userId, messageId) {
     [userId, messageId]
   );
   return result.rows[0] ? rowToSelfMessage(result.rows[0]) : null;
+}
+
+export async function countSentSelfMessagesForDate(userId, today) {
+  const result = await query(
+    `SELECT COUNT(*)::int AS count
+     FROM self_messages
+     WHERE user_id = $1
+       AND status = 'sent'
+       AND to_char(sent_at AT TIME ZONE 'Asia/Shanghai', 'YYYY-MM-DD') = $2`,
+    [userId, today]
+  );
+  return Number(result.rows[0]?.count || 0);
 }
 
 export async function createFanMessages(userId, messages, fromSelfMessageId) {
@@ -271,11 +297,24 @@ export async function listFanMessages(userId, limit = 200) {
 
 export async function createIdolChatMessage(userId, artistId, message) {
   const result = await query(
-    `INSERT INTO idol_chat_messages (id, user_id, artist_id, sender, text, display_time)
-     VALUES ($1, $2, $3, $4, $5, $6)
-     ON CONFLICT (id) DO NOTHING
+    `INSERT INTO idol_chat_messages (id, user_id, artist_id, sender, text, display_time, attachment_type, attachment_uri)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+     ON CONFLICT (id) DO UPDATE SET
+       text = EXCLUDED.text,
+       display_time = EXCLUDED.display_time,
+       attachment_type = EXCLUDED.attachment_type,
+       attachment_uri = EXCLUDED.attachment_uri
      RETURNING *`,
-    [message.id, userId, artistId, message.sender || "user", message.text, message.createdAt || null]
+    [
+      message.id,
+      userId,
+      artistId,
+      message.sender || "user",
+      message.text,
+      message.createdAt || null,
+      message.attachmentType || null,
+      message.attachmentUri || null
+    ]
   );
   return result.rows[0] ? rowToIdolChatMessage(result.rows[0]) : message;
 }

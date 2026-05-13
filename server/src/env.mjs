@@ -1,7 +1,14 @@
 import { existsSync, readFileSync } from "node:fs";
 
 export function loadEnvFiles() {
-  for (const file of [".env.production", ".env.local", ".env", "../.env.local", "../.env"]) {
+  for (const file of [
+    "/etc/idol-mode/idol-mode-api.env",
+    ".env.production",
+    ".env.local",
+    ".env",
+    "../.env.local",
+    "../.env"
+  ]) {
     if (!existsSync(file)) continue;
     const lines = readFileSync(file, "utf8").split(/\r?\n/);
     for (const line of lines) {

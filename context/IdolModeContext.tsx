@@ -28,6 +28,7 @@ import { fetchGrowthStats, settleDailyGrowth } from "@/services/growthApi";
 import { Artist, ChatAttachmentType, ChatMessage, FanMessage, IdolChatThread, IdolGrowthStats, Profile, QuotedFanMessage } from "@/types/idol";
 
 const STICKERS_KEY = "idol_mode_custom_stickers";
+const LOCAL_PROFILE_AVATAR_KEY = "idol_mode_local_profile_avatar";
 
 type SendMessageOptions = {
   attachmentType?: ChatAttachmentType;
@@ -39,7 +40,7 @@ type IdolModeContextValue = {
   isReady: boolean;
   isProfileComplete: boolean;
   myProfile: Profile;
-  updateProfile: (profile: Profile) => void;
+  updateProfile: (profile: Profile) => Promise<Profile>;
   recommendedArtists: Artist[];
   addedArtists: Artist[];
   addArtist: (artist: Artist) => void;
@@ -79,6 +80,14 @@ function timeNow() {
   return `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
 }
 
+function isLocalMediaUri(value?: string) {
+  return Boolean(value && /^(file|content|blob|data):/.test(value));
+}
+
+function isRemoteMediaUri(value?: string) {
+  return Boolean(value && /^https?:/.test(value));
+}
+
 export function IdolModeProvider({ children }: { children: ReactNode }) {
   const [isReady, setIsReady] = useState(false);
   const [myProfile, setMyProfile] = useState<Profile>(initialProfile);
@@ -112,7 +121,12 @@ export function IdolModeProvider({ children }: { children: ReactNode }) {
         if (cancelled) return;
 
         if (data) {
-          if (data.profile) setMyProfile(data.profile);
+          const localAvatar = await AsyncStorage.getItem(LOCAL_PROFILE_AVATAR_KEY);
+          if (cancelled) return;
+          if (data.profile) {
+            const shouldUseLocalAvatar = localAvatar && !isRemoteMediaUri(data.profile.avatar);
+            setMyProfile(shouldUseLocalAvatar ? { ...data.profile, avatar: localAvatar } : data.profile);
+          }
           setRecommendedArtists(data.recommendedArtists?.length ? data.recommendedArtists : initialRecommendedArtists);
           setAddedArtists(data.addedArtists ?? []);
           setSelfMessages(data.selfMessages ?? []);
@@ -151,9 +165,15 @@ export function IdolModeProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const value = useMemo<IdolModeContextValue>(() => {
-    const updateProfile = (profile: Profile) => {
-      setMyProfile(profile);
-      void apiUpdateProfile(profile);
+    const updateProfile = async (profile: Profile) => {
+      const savedProfile = await apiUpdateProfile(profile);
+      setMyProfile(savedProfile);
+      if (isLocalMediaUri(savedProfile.avatar)) {
+        void AsyncStorage.setItem(LOCAL_PROFILE_AVATAR_KEY, savedProfile.avatar);
+      } else {
+        void AsyncStorage.removeItem(LOCAL_PROFILE_AVATAR_KEY);
+      }
+      return savedProfile;
     };
 
     const addArtist = (artist: Artist) => {
@@ -214,13 +234,17 @@ export function IdolModeProvider({ children }: { children: ReactNode }) {
 
       await apiCreateSelfMessage({ ...target, status: target.status || "pending" });
 
+      const statusResult = await apiUpdateSelfMessageStatus(messageId, "sent");
+      if (!statusResult.ok) {
+        throw new Error(statusResult.message || "发送失败，请稍后再试。");
+      }
+
       setSelfMessages((current) =>
         current.map((message) => {
           if (message.id !== messageId) return message;
           return { ...message, status: "sent" };
         })
       );
-      await apiUpdateSelfMessageStatus(messageId, "sent");
 
       // 更新 lastIdolMessage，供 live drip 做 reaction aftershock
       setLastIdolMessage(target.text);
@@ -236,7 +260,7 @@ export function IdolModeProvider({ children }: { children: ReactNode }) {
       // 异步生成 reaction burst，填入 reactionQueue
       // 如果这条消息引用了粉丝消息，把被引用内容也传给 AI，让粉丝能对引用做出反应
       const quotedContent = target.quotedFanMessage?.content;
-      void generateReactionBurst(target.text, target.id, 32, quotedContent).then((burst) => {
+      void generateReactionBurst(target.text, target.id, 40, quotedContent).then((burst) => {
         reactionQueue.current = [...reactionQueue.current, ...burst];
       });
 

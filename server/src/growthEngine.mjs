@@ -12,6 +12,7 @@
 // ── 常量 ──────────────────────────────────────────────────────────────────────
 
 export const MAX_DAILY_BV = 100;
+export const DAILY_SELF_MESSAGE_LIMIT = 50;
 
 /** 连续营业成就定义 */
 export const STREAK_ACHIEVEMENTS = [

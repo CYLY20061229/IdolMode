@@ -70,7 +70,8 @@ function avatarFallbackFromNickname(profile: Profile): string {
 function profileForApi(profile: Profile): Profile {
   return {
     ...profile,
-    avatar: isLocalMediaUri(profile.avatar) ? avatarFallbackFromNickname(profile) : profile.avatar
+    avatar: isLocalMediaUri(profile.avatar) ? avatarFallbackFromNickname(profile) : profile.avatar,
+    backgroundImage: isLocalMediaUri(profile.backgroundImage) ? undefined : profile.backgroundImage
   };
 }
 
@@ -199,20 +200,20 @@ export async function fetchBootstrap(): Promise<BootstrapData | null> {
 
 // ── profile ───────────────────────────────────────────────────────────────────
 
-/** 乐观更新：本地 state 已更新，后台静默同步到数据库。 */
-export async function apiUpdateProfile(profile: Profile): Promise<void> {
-  if (!isApiAvailable()) return;
-  try {
-    const response = await apiFetch("/me/profile", {
-      method: "PUT",
-      body: JSON.stringify({ profile: profileForApi(profile) })
-    });
-    if (!response.ok) {
-      console.warn("Profile sync failed.", response.status);
-    }
-  } catch {
-    console.warn("Profile sync failed.");
+export async function apiUpdateProfile(profile: Profile): Promise<Profile> {
+  if (!isApiAvailable()) return profile;
+  const response = await apiFetch("/me/profile", {
+    method: "PUT",
+    body: JSON.stringify({ profile: profileForApi(profile) })
+  });
+  const data = await response.json().catch(() => ({})) as { profile?: Profile; message?: string; error?: string };
+  if (!response.ok) {
+    throw new Error(data.message || data.error || `资料保存失败：${response.status}`);
   }
+  if (!data.profile) {
+    throw new Error("资料保存失败：服务器没有返回资料。");
+  }
+  return data.profile;
 }
 
 // ── friends ───────────────────────────────────────────────────────────────────
@@ -246,6 +247,13 @@ export async function apiRemoveFriend(artistId: string): Promise<void> {
   }
 }
 
+type ApiMutationResult = {
+  ok: boolean;
+  status?: number;
+  message?: string;
+  error?: string;
+};
+
 // ── self messages ─────────────────────────────────────────────────────────────
 
 export async function apiCreateSelfMessage(message: ChatMessage): Promise<boolean> {
@@ -275,21 +283,27 @@ export async function apiCreateSelfMessage(message: ChatMessage): Promise<boolea
   }
 }
 
-export async function apiUpdateSelfMessageStatus(messageId: string, status: string): Promise<boolean> {
-  if (!isApiAvailable()) return false;
+export async function apiUpdateSelfMessageStatus(messageId: string, status: string): Promise<ApiMutationResult> {
+  if (!isApiAvailable()) return { ok: false };
   try {
     const response = await apiFetch(`/me/self-messages/${encodeURIComponent(messageId)}`, {
       method: "PATCH",
       body: JSON.stringify({ status })
     });
     if (!response.ok) {
+      const data = await response.json().catch(() => ({})) as { message?: string; error?: string };
       console.warn("Update self message status sync failed.", response.status);
-      return false;
+      return {
+        ok: false,
+        status: response.status,
+        message: data.message,
+        error: data.error
+      };
     }
-    return true;
-  } catch {
-    console.warn("Update self message status sync failed.");
-    return false;
+    return { ok: true, status: response.status };
+  } catch (error) {
+    console.warn("Update self message status sync failed.", error);
+    return { ok: false, message: error instanceof Error ? error.message : String(error) };
   }
 }
 

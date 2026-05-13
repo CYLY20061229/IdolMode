@@ -18,7 +18,8 @@ import { Avatar } from "@/components/Avatar";
 import IconButton from "@/components/IconButton";
 import { colors, shadow, spacing } from "@/constants/theme";
 import { useIdolMode } from "@/context/IdolModeContext";
-import { pickLocalImage } from "@/services/localMedia";
+import { pickProfileAvatarImage, pickProfileBackgroundImage } from "@/services/localMedia";
+import { uploadImageToOss } from "@/services/uploadApi";
 
 // ── 昵称 ──────────────────────────────────────────────────────────────────────
 
@@ -152,25 +153,41 @@ function EditModal({ visible, onClose }: { visible: boolean; onClose: () => void
   const [statusText, setStatusText] = useState(myProfile.statusText || "");
   const [avatar, setAvatar] = useState(myProfile.avatar || "");
   const [saving, setSaving] = useState(false);
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
 
   const pickAvatar = async () => {
-    const uri = await pickLocalImage();
-    if (uri) setAvatar(uri);
+    const uri = await pickProfileAvatarImage();
+    if (uri && !uploadingAvatar) {
+      setAvatar(uri);
+      setUploadingAvatar(true);
+      try {
+        const publicUrl = await uploadImageToOss(uri, "avatar");
+        setAvatar(publicUrl);
+      } catch {
+        Alert.alert("上传失败", "头像没有上传成功，请重新选择。");
+        setAvatar(myProfile.avatar || "");
+      } finally {
+        setUploadingAvatar(false);
+      }
+    }
   };
 
   const handleSave = async () => {
     if (!nickname.trim()) return;
     setSaving(true);
     try {
-      const isImageAvatar = /^(file|content|data|https?):/.test(avatar);
-      await updateProfile({
+      const isImageAvatar = /^(https?):/.test(avatar);
+      const savedProfile = await updateProfile({
         ...myProfile,
         nickname: nickname.trim(),
         signature: signature.trim(),
         statusText: statusText.trim(),
         avatar: isImageAvatar ? avatar : (avatar.slice(0, 3).toUpperCase() || "我")
       });
+      setAvatar(savedProfile.avatar || "");
       onClose();
+    } catch (error) {
+      Alert.alert("保存失败", error instanceof Error ? error.message : "资料没有保存成功，请稍后再试。");
     } finally {
       setSaving(false);
     }
@@ -184,10 +201,10 @@ function EditModal({ visible, onClose }: { visible: boolean; onClose: () => void
 
           {/* 头像选择 */}
           <View style={em.avatarRow}>
-            <Pressable onPress={pickAvatar} style={em.avatarBtn}>
+            <Pressable onPress={uploadingAvatar ? undefined : pickAvatar} style={[em.avatarBtn, uploadingAvatar && em.uploading]}>
               <Avatar label={avatar || "我"} size={64} backgroundColor={colors.secondary} />
               <View style={em.avatarOverlay}>
-                <Text style={em.avatarOverlayText}>换头像</Text>
+                <Text style={em.avatarOverlayText}>{uploadingAvatar ? "上传中" : "换头像"}</Text>
               </View>
             </Pressable>
           </View>
@@ -229,9 +246,9 @@ function EditModal({ visible, onClose }: { visible: boolean; onClose: () => void
           <Pressable
             style={[em.btn, saving && em.btnDisabled]}
             onPress={handleSave}
-            disabled={saving}
+            disabled={saving || uploadingAvatar}
           >
-            <Text style={em.btnText}>{saving ? "保存中…" : "保存"}</Text>
+            <Text style={em.btnText}>{saving ? "保存中…" : uploadingAvatar ? "头像上传中…" : "保存"}</Text>
           </Pressable>
           <Pressable style={em.cancel} onPress={onClose}>
             <Text style={em.cancelText}>取消</Text>
@@ -260,6 +277,7 @@ const em = StyleSheet.create({
   title: { color: colors.text, fontSize: 20, fontWeight: "900", marginBottom: 4 },
   avatarRow: { alignItems: "center", marginBottom: 4 },
   avatarBtn: { position: "relative" },
+  uploading: { opacity: 0.65 },
   avatarOverlay: {
     position: "absolute",
     bottom: 0,
@@ -304,11 +322,20 @@ const em = StyleSheet.create({
 export default function MyProfileScreen() {
   const { myProfile, updateProfile } = useIdolMode();
   const [editVisible, setEditVisible] = useState(false);
+  const [backgroundUploading, setBackgroundUploading] = useState(false);
 
   const pickBackground = async () => {
-    const uri = await pickLocalImage();
-    if (uri) {
-      await updateProfile({ ...myProfile, backgroundImage: uri });
+    const uri = await pickProfileBackgroundImage();
+    if (uri && !backgroundUploading) {
+      setBackgroundUploading(true);
+      try {
+        const publicUrl = await uploadImageToOss(uri, "profile-background");
+        await updateProfile({ ...myProfile, backgroundImage: publicUrl });
+      } catch (error) {
+        Alert.alert("背景保存失败", error instanceof Error ? error.message : "背景图片没有保存成功，请稍后再试。");
+      } finally {
+        setBackgroundUploading(false);
+      }
     }
   };
 
@@ -318,7 +345,11 @@ export default function MyProfileScreen() {
       {
         text: "移除",
         style: "destructive",
-        onPress: () => updateProfile({ ...myProfile, backgroundImage: undefined })
+        onPress: () => {
+          updateProfile({ ...myProfile, backgroundImage: undefined }).catch((error) => {
+            Alert.alert("移除失败", error instanceof Error ? error.message : "背景图片没有移除成功，请稍后再试。");
+          });
+        }
       }
     ]);
   };
@@ -363,10 +394,10 @@ export default function MyProfileScreen() {
           {/* 修改背景按钮（右下角） */}
           <Pressable
             style={({ pressed }) => [styles.bgEditBtn, pressed && { opacity: 0.7 }]}
-            onPress={hasBackground ? removeBackground : pickBackground}
+            onPress={backgroundUploading ? undefined : hasBackground ? removeBackground : pickBackground}
           >
             <Text style={styles.bgEditText}>
-              {hasBackground ? "🗑 移除背景" : "修改背景"}
+              {backgroundUploading ? "上传中…" : hasBackground ? "🗑 移除背景" : "修改背景"}
             </Text>
           </Pressable>
         </View>

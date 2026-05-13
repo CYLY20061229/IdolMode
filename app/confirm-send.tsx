@@ -53,10 +53,11 @@ export default function ConfirmSendScreen() {
       // 先播音效，再等待发送完成，两者并发
       void playSendSound();
       await confirmSelfMessage(message.id);
-      router.replace("/self-chat");
+      router.back();
     } catch (error) {
+      const message = error instanceof Error ? error.message : "请稍后再试。";
       console.warn("Confirm send failed.", error);
-      Alert.alert("发送失败", "请稍后再试。");
+      Alert.alert("发送失败", message);
     } finally {
       setSending(false);
     }
