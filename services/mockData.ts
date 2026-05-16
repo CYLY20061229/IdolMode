@@ -1,4 +1,4 @@
-import { Artist, ChatMessage, FanMessage, IdolChatThread, Profile } from "@/types/idol";
+import { Artist, ChatMessage, FanMessage, IdolChatThread, Poll, Profile } from "@/types/idol";
 
 export const myProfile: Profile = {
   id: "me",
@@ -66,12 +66,6 @@ export const selfChatMessages: ChatMessage[] = [
     text: "今天练习结束得很晚，但我从练习室窗户看到了月亮，像一场很小的安可。",
     status: "sent",
     createdAt: "22:18"
-  },
-  {
-    id: "fan-emoji-1",
-    sender: "fan",
-    text: "💜🥹✨",
-    createdAt: "22:19"
   }
 ];
 
@@ -127,6 +121,63 @@ export const idolChatMessages: IdolChatThread[] = [
     ]
   }
 ];
+
+export const artistBubbleMessagePools: Record<string, string[]> = {
+  "artist-1": [
+    "刚刚下练习，鞋带又松了三次。",
+    "今天录音的时候突然很想吃热汤。",
+    "老师说我这次高音稳了一点点，我偷偷开心了。",
+    "如果你现在也累，就和我一起休息五分钟。",
+    "今天妆发很顺利，拍了几张存货，之后给你看。",
+    "刚才成员说我笑点太低，我承认。",
+    "练习室空调有点冷，但今天状态还不错。",
+    "你今天有没有好好吃饭？我有认真吃。"
+  ],
+  "artist-2": [
+    "grey 的副歌今天又改了一版，好像更贴近我想要的感觉。",
+    "刚刚听到一段雨声，突然有新的旋律了。",
+    "今天有点安静，但不是坏心情。",
+    "谢谢你还在听我的歌，这件事对我很重要。",
+    "我在写一小段和海有关的歌词。",
+    "今晚想把灯调暗一点工作。",
+    "你觉得灰色是冷的还是温柔的？",
+    "今天拍摄结束，头发被风吹得很乱。"
+  ],
+  "artist-3": [
+    "排练室的鼓今天吵得我脑袋嗡嗡的。",
+    "写了一句歌词，但还没想好要不要留下。",
+    "嗓子还行，别担心，我有喝水。",
+    "今天贝斯线很好听，差点抢走我的注意力。",
+    "如果下一场演出你在台下，我会唱得更用力一点。",
+    "刚才突然想起第一场小演出的灯。",
+    "我不太会说漂亮话，但我真的看到了你的留言。",
+    "今天的天空像一块旧胶片。"
+  ],
+  "artist-4": [
+    "今天练了新的转身，差点把自己转晕。",
+    "拉伸的时候听到外面有人在笑，心情突然好了。",
+    "晚饭吃了面，练舞前不敢吃太多。",
+    "老师说我的手臂线条更干净了，记下来。",
+    "今天汗流得很夸张，但很爽。",
+    "你要是看到练习室地板，可能会笑我。",
+    "刚刚复盘视频，发现一个小表情还不错。",
+    "明天想早点去练习室。"
+  ]
+};
+
+const artistPoolIndexes: Record<string, number> = {};
+
+export function generateArtistBubbleMessage(artistId: string): string {
+  const pool = artistBubbleMessagePools[artistId] ?? [
+    "今天也有在认真生活。",
+    "刚刚看到你的消息了，谢谢你。",
+    "有些话想慢慢说给你听。",
+    "你也要照顾好自己。"
+  ];
+  const index = artistPoolIndexes[artistId] ?? Math.floor(Math.random() * pool.length);
+  artistPoolIndexes[artistId] = index + 1;
+  return pool[index % pool.length];
+}
 
 export const fanMessages: FanMessage[] = [
   {
@@ -332,10 +383,11 @@ function pickLanguage(preferZh = true): FanMessage["language"] {
 const localPrefixes = [
   "",
   "",
-  "",
+  "我觉得","不是","不是","姐姐","啊","啊","嗯","","","","","","","","","","","","","","","","","","","","","","",
+  "呃呃",
   "说真的，",
   "不知道咋的，",
-  "我刚刚又想了想，",
+  "我刚刚又觉得，",
   "其实，",
   "妈呀，",
   "爸呀大哥，",
@@ -345,13 +397,12 @@ const localPrefixes = [
 
 const localSuffixes = [
   "",
-  "",
-  "",
-  "🥺",
-  "真的。",
+  "😶",
+  "🤩",
+  "🥺","🥺","🥺","🥺","🥺","🥺","🥺",
+  "真的。","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","",
   "别嫌我啰嗦。",
-  "我会一直记着。",
-  "今天先这样也很好。"
+"","我肚肚","我肚肚","我肚肚","我肚肚","是吧","kkkk","kkkk","kkkk","kkkkkkk","kkkkkkkk","heart软软","heart软软","heart软软","heart软软","","","","","","","","","","","","","","","",
 ];
 
 function addLocalVariation(content: string, personaType: string) {
@@ -377,7 +428,7 @@ function addLocalVariation(content: string, personaType: string) {
   }
 
   if (personaType === "chaotic meme fan" && Math.random() < 0.25) {
-    result += randomItem(["我先疯了。", "别管我。", "我宣布我很稳定。"]);
+    result += randomItem(["我疯了。", "别管了。", "我肚肚。"]);
   }
 
   return result;
@@ -391,15 +442,14 @@ function fillTemplate(template: string, slots: Record<string, string[]>) {
 }
 
 const templateSlots = {
-  careAction: ["好好吃饭", "按时睡觉", "多喝水", "少熬夜", "穿多一点", "别太累"],
+  careAction: ["好好吃饭", "按时睡觉", "多喝水", "穿多一点", "别太累"],
   careEmotion: ["担心", "惦记", "放心不下", "操心", "忍不住关心"],
   dailyScene: ["刚下课", "刚下班", "刚从图书馆回来", "刚洗完澡", "坐地铁的时候", "考完试之后"],
   dailyFeeling: ["有点累", "肚肚要炸了", "突然特别想你", "感觉终于熬过了一天", "感觉人生太难了"],
-  waitingTime: ["五分钟", "十分钟", "一会儿", "到睡前", "到你出现为止"],
+  waitingTime: ["五分钟", "十分钟", "一会儿", "到你出现为止"],
   oldFood: ["旧自拍", "上次的消息", "以前的舞台", "之前的 demo", "那张旧照片"],
   musicThing: ["新歌", "demo", "舞台", "练习室版本", "下一次现场", "副歌","舞蹈版本mv","专辑", "巡演"],
-  reactionFeeling: ["heart软软", "破防", "眼睛尿尿了", "突然被治愈到", "又开始想你"],
-  lateTime: ["凌晨", "睡前", "深夜", "关灯的时候", "准备睡觉的时候"]
+  reactionFeeling: ["heart软软", "破防", "眼睛尿尿了", "突然被治愈到", "又开始想你"]
 };
 
 const personaTemplates: Record<string, string[]> = {
@@ -411,16 +461,18 @@ const personaTemplates: Record<string, string[]> = {
     "你可以少发一点，但不能不好好{careAction}"
   ],
   "sleep police": [
-    "如果你还没睡，我真的要管管你了",
-    "现在这个点还不休息的话，我得收你手机了",
-    "现在还没睡，不会是和亲亲对象分手了失恋吧",
-    "分手了才知道来找粉丝是不？？？",
-    "下班了吗宝，快点睡觉吧，我也要睡觉了",
-    "晚安宝宝，我好累啊今天工作太辛苦了",
-    "晚安，我还有一个月考试只好熬夜了，但是你要好好休息，你是我的一切",
-    "我好想你啊，睡觉前想见你一面，我希望在梦里见到你，我爱你",
-    "祝我做一个有你的美梦好吗",
-    "这么晚不睡觉在和谁法呢"
+    "下班了吗宝",
+    "我好累啊今天工作太辛苦了",
+    "我还有一个月考试了，但是你要好好休息，你是我的一切",
+    "我好想你啊",
+    "我好想见到你啊",
+    "我好想抱抱你啊",
+    "我好想亲亲你啊",
+    "我好想和你说说话啊",
+    "我好想和你聊天啊",
+    "我好想和你待在一起啊"
+    ,"你怎么会这么好呢，你是最完美的",
+    "嘿嘿今天心情很好！我爱你"    
 
   ],
   "life diary fan": [
@@ -433,13 +485,11 @@ const personaTemplates: Record<string, string[]> = {
   "hungry waiting fan": [
     "今天也没有自拍吗，我再等{waitingTime}。",
     "{oldFood}已经被我翻到快会背了。",
-    "还没有消息吗，软件都落灰了吧，你队友发的比你多多了",
-    "学学你队友行吗，你发这么少是恨我们吗",
-    "我好想你啊我每天都在想你，我已崩溃我已急哭我已投降"
+    "我好想你啊我每天都在想你，我已崩溃我已急哭我已投降"，
+    "我真的真的好想你，你发多少我都不满意，我想要更多",
   ],
   "chaotic meme fan": [
     "阿帕特阿帕特阿帕特阿帕特",
-    "宝宝你觉得五女一是谁",
     "妈妈妈妈妈妈妈妈",
     "爸爸爸爸爸爸爸爸",
     "能不能少提队友。。。"
@@ -448,11 +498,9 @@ const personaTemplates: Record<string, string[]> = {
     "可以营业，但{musicThing}也要继续搞，好吗",
     "你来不来无所谓，{musicThing}什么时候来。",
     "多泡泡练习室好吗，就你一直抢拍",
-    "啥时候去上声乐课啊，你的消音让我抬不起头知道吗",
-    "啥时候去上声乐课啊，听不出来自己跑调漏气吗小姐姐，到时候一位安可我又得退网了",
     "你的实力是最好的底气",
     "你最好是在认真准备{musicThing}。",
-    "别光聊天谈恋爱了，{musicThing}麻溜拿出来。"
+    "{musicThing}麻溜拿出来。"
   ],
   "music listener": [
     "今天又想起你的{musicThing}，我完全和你共鸣了宝宝，我想我会爱你一辈子",
@@ -472,13 +520,16 @@ const personaTemplates: Record<string, string[]> = {
     "你是我的，对吧",
     "一辈子不谈恋爱好不好，一辈子在我身边好不好",
     "因为你我一直不想找对象，因为你就是我的爱人",
+    "我好想真的在你身边啊，抱抱你亲亲你，和你说说话，听你说话，陪你聊天",
+    "我好想真的在你身边啊",
+
   ],
   "dramatic crier": [
-    "家人们咱就是说咱们公主少爷终于上线了",
+    "家人们咱就是说咱们公主终于上线了",
     "谁懂啊，我看到你在线就已经开始{reactionFeeling}。",
     "啊啊啊啊啊啊啊啊啊啊啊啊啊啊你来了宝宝",
     "啊啊啊啊啊啊啊啊啊啊啊啊啊啊啊啊我爱你宝贝",
-    "啊啊啊啊啊啊啊啊啊啊啊啊啊啊啊啊啊"
+    "啊啊啊啊啊啊啊啊啊啊啊啊啊啊啊啊啊","你是我的公主宝宝我爱你！","啊啊啊啊啊啊啊啊啊啊啊啊啊啊啊啊我好想你","看到你在线了我就已经崩溃了","我好爱好爱好爱你","我好想见到你","我好想抱抱你","我好想亲亲你","我好想和你说话","我好想和你聊天","我好想和你待在一起"
   ],
   "detail detective": [
     "你那条ins里的同款啥意思",
@@ -510,7 +561,6 @@ const personaTemplates: Record<string, string[]> = {
   ],
   "teasing toxic fan": [
     "哦，终于想起来这里还有一群人在等你了是吧。",
-    "恋爱谈爽了没",
     "又没消息，行，我自己哄自己。",
     "你最好是真的在忙，不是在和别人约会",
     "大明星今天也很忙是吧。别忘了自己的来时路哈，忘本没有好下场"
@@ -521,13 +571,6 @@ const personaTemplates: Record<string, string[]> = {
     "本来只是tour一下，怎么越陷越深。。。",
     "tour了一下发现你真的很好，我要严肃考虑入坑了",
     "你咋这么好看，给我垂到坑底了啊啊啊啊啊啊啊啊啊啊啊啊啊"
-  ],
-  "late night fan": [
-    "{lateTime}的时候人会变诚实，所以我承认我很爱你，离不开你。",
-    "睡不着，和你聊天",
-    "今天终于结束了，来跟你说一句晚安。",
-    "一天里只有夜晚是我的时间，我想和你度过",
-    "你是我存在的意义，每次想到你我都很幸福，我爱你"
   ],
   "quote jealous fan": [
     "为什么引用的不是我，我也发了好多条的",
@@ -618,8 +661,7 @@ function pickPersonaForAmbient() {
     "working adult fan",
     "school fan",
     "teasing toxic fan",
-    "new fan sparkle",
-    "late night fan"
+    "new fan sparkle"
   ]);
 }
 
@@ -772,6 +814,238 @@ export function generateFanMessagesAfterSend(
   );
 }
 
+const pollReactionTemplates = {
+  choose: [
+    "{option}！，这还用犹豫吗！",
+    "必须是{option}！！！宝宝听我的",
+    "{option}票数给我冲！",
+    "{option}!",
+    "{option}求你了！！！",
+    "{option}，我都说了多少遍了！！！",
+    "没有不是{option}的义务！",
+    "选{option}就对了!",
+    "我闭眼都选{option}。",
+    "这题答案不就是{option}吗？",
+    "{option}，不接受反驳。",
+    "我投{option}了，宝宝别让我输。",
+    "{option}党集合！！！",
+    "谁不选{option}我真的会伤心。",
+    "我宣布今天必须是{option}。",
+    "我手已经替我投了{option}。",
+    "{option}太适合了，真的别犹豫。",
+    "选{option}，我求你们了。",
+    "{option}赢不了的话我今晚睡不着。",
+    "我为{option}举大旗。",
+    "都让开，我要投{option}。",
+    "{option}就是民意！",
+    "投{option}的人都很有品。",
+    "我已经把票投给{option}了，接下来交给命运。",
+    "{option}，这不是选择题，这是送分题。",
+    "宝宝我选{option}，你最好懂我。",
+    "我投{option}，因为我真的很需要。",
+    "{option}给我上去！！！",
+    "{option}不赢我真的会碎。",
+    "今天谁都别拦我投{option}。"
+  ],
+
+  campaign: [
+    "都来投{option}，不要逼我挨个劝。",
+    "拉票了拉票了，{option}需要你们。",
+    "{option}落后了，快去投！",
+    "快快快把{option}送上去。",
+    "{option}党不要装死，出来投票！",
+    "姐妹们醒醒，{option}需要支援。",
+    "还没投{option}的现在立刻马上去。",
+    "我再说一遍，{option}需要每一票。",
+    "{option}现在很危险，别看了快投。",
+    "给{option}一点排面好吗！",
+    "路过的都给我投{option}。",
+    "今天必须把{option}抬上去。",
+    "投{option}就是对宝宝最好的爱。",
+    "别让{option}输得这么难看好吗。",
+    "{option}冲上去，我真的会谢。",
+    "投票不积极，思想有问题，快投{option}。",
+    "我现在开始为{option}拉票。",
+    "{option}党还有人在吗？出来干活。",
+    "别光看热闹，手动投{option}。",
+    "差一点了差一点了，{option}再冲一下。",
+    "我不管，今天{option}必须赢。",
+    "为了{option}，我可以再喊十遍。",
+    "{option}值得更高票数。",
+    "投{option}的宝宝们你们在哪里！",
+    "快把{option}送到第一名，我真的急了。",
+    "别让宝宝看到{option}票这么低，心碎。",
+    "投{option}，这是我们共同的事业。",
+    "今天的任务：把{option}投上去。",
+    "你一票我一票，{option}明天就出道。",
+    "{option}党别输，输了我真的会破防。"
+  ],
+
+  all: [
+    "不能全都要吗，为什么要为难我。",
+    "我都想选，怎么办",
+    "你发起投票，我负责全都喜欢。",
+    "选项太会了，我选择困难症犯了。",
+    "这四个我都要，不许让我选。",
+    "成年人不做选择，我全都要。",
+    "你这个投票是在考验我吗？",
+    "每个都想看，真的没办法选。",
+    "能不能按顺序全安排一遍。",
+    "我投不下去，因为每个都很想要。",
+    "你先别管票数，全部发一遍好吗。",
+    "这题超纲了，我不会。",
+    "我看到选项就已经开始纠结了。",
+    "为什么不能多选啊啊啊啊。",
+    "这个投票对贪心粉丝很不友好。",
+    "我选了，但我对其他选项也有感情。",
+    "不行，这几个都太想要了。",
+    "我真的没办法只爱一个选项。",
+    "能不能今天一个，明天一个，后天一个。",
+    "你这个人真的很会为难粉丝。",
+    "我以为我很坚定，直到看见这些选项。",
+    "全都安排，粉丝会自己消化的。",
+    "我不是选择困难，我是太爱了。",
+    "这题没有正确答案，因为全都正确。",
+    "我投了一个，但我的心属于全部。",
+    "你知道我点下去的时候有多痛苦吗。",
+    "我建议取消投票，直接全部兑现。",
+    "我真的每个都想看，别逼我跪下求你。",
+    "我的理智让我选一个，我的心说全要。",
+    "这个投票的存在就是一种甜蜜折磨。"
+  ],
+
+  dream: [
+    "你问这个是不是在暗示我，别管我我先心动。",
+    "我投完了，但我感觉你是在和我聊天。",
+    "宝宝你连投票都像在哄我。",
+    "这题我会，因为答案是我爱你。",
+    "你问我们想要什么，我真的会当真。",
+    "我怎么感觉你是在偷偷问我意见。",
+    "宝宝你这样很像在撒娇，别管我。",
+    "我投票的时候嘴角已经下不来了。",
+    "你连发投票都这么会，我真的服了。",
+    "你是不是知道我会选这个。",
+    "我感觉你在钓我，但我心甘情愿。",
+    "你问一句，我心软一整天。",
+    "这不像投票，像你在问我想不想你。",
+    "我投了，但我现在更想见你。",
+    "你这样问真的很犯规。",
+    "我只是来投票，怎么又被你拿捏了。",
+    "宝宝你别太会营业，我承受能力有限。",
+    "我投完了，然后开始想你。",
+    "你知道这种互动对我来说有多珍贵吗。",
+    "我感觉自己被你记住了一秒。",
+    "你发起投票，我脑子里已经开始写小作文。",
+    "我选的不是选项，是我的心动。",
+    "你问我们想看什么，那我想看你开心。",
+    "投票只是表面，想你才是真的。",
+    "我感觉你今天特别温柔，虽然只是个投票。",
+    "你连问问题都像在靠近我。",
+    "别管我，我已经开始自动代入了。",
+    "这个投票让我有一种被需要的错觉。",
+    "你稍微互动一下，我就能开心很久。",
+    "我投完了，现在可以奖励我一句晚安吗。"
+  ],
+
+  analysis: [
+    "{option}确实最适合今天。",
+    "{option}真的更好，说实话",
+    "都不喜欢呵呵呵",
+    "这个投票很聪明，挺会媚粉啊。",
+    "{option}比较符合今天的氛围。",
+ 
+    "这个选项设置得挺懂粉丝心理的。",
+    "{option}更适合现在发，别问为什么。",
+    "如果你想让后台热闹，选{option}准没错。",
+    "{option}是流量密码，但我不说。",
+    "说实话，{option}最能调动情绪。",
+    "这个投票结果应该不会太意外。",
+    "我感觉{option}会断层领先。",
+    "我觉得这个投票选项设计得很聪明。",
+    "这题看起来简单，其实很懂粉丝。",
+
+    "我不发疯，我理性投{option}。",
+    "这次我站{option}，理由很充分。"
+  ],
+
+  tease: [
+    "又让粉丝替你做选择是吧。",
+    "大明星连这个都要问我们，行。",
+    "这问题好无聊。。。行吧我已经投票了。",
+    "你最好最后真的听票数的。",
+    "66666这什么问题",
+    "你最好不是问完就跑。",
+    "投完了，别装没看见。",
+    "又开始钓粉丝了是吧。",
+    "你这个人真的很会使唤粉丝。",
+    "行，我投，谁让我喜欢你。",
+    "你问我们干嘛，最后不还是你自己决定。",
+    "我投了，但你最好兑现。",
+    "这投票要是没有后续，我会记仇。",
+    "笑死，大明星终于想起民主了。",
+    "你还挺会让粉丝干活。",
+    "我投完了，下一步是不是该你营业了。",
+    "别光发投票，发点真的。",
+    "你今天是不是懒得想内容。",
+    "用投票水营业是吧，学会了。",
+    "我嘴上嫌弃，手已经投了。",
+    "好好好，又被你拿捏一次。",
+    "你发投票，我发疯，很公平。",
+    "这题有点离谱，但我居然认真选了。",
+    "我投了，你要是不看票数我真的会无语。",
+    "别的先不说，你这个问题很有心机。",
+    "你是不是想看我们吵起来。",
+    "投票可以，兑现也请跟上。",
+    "你要是最后选了票低的那个，我会笑。",
+    "粉丝投票，爱豆装傻，经典流程。",
+    "我投完了，现在你欠我一个结果。"
+  ],
+
+
+
+
+};
+
+function fillPollTemplate(template: string, poll: Poll) {
+  const winner = poll.options.find((option) => option.id === poll.winningOptionId) ?? poll.options[0];
+  const option = Math.random() < 0.55 ? winner : poll.options[Math.floor(Math.random() * poll.options.length)];
+  return template.replace("{option}", option?.text ?? "这个");
+}
+
+export function generateFanMessagesAfterPoll(poll: Poll, count = 24, fromMessageId?: string): FanMessage[] {
+  const bucketTargets = [
+    { key: "choose", ratio: 0.4, personaType: "poll direct voter" },
+    { key: "campaign", ratio: 0.2, personaType: "poll canvasser" },
+    { key: "all", ratio: 0.15, personaType: "poll wants all" },
+    { key: "dream", ratio: 0.1, personaType: "dream-girl crazy" },
+    { key: "analysis", ratio: 0.1, personaType: "career mom-fan analyst" },
+    { key: "tease", ratio: 0.05, personaType: "mild tough-mouth teaser" }
+  ] as const;
+  const expanded = bucketTargets.flatMap((bucket) =>
+    Array.from({ length: Math.floor(count * bucket.ratio) }, () => bucket)
+  );
+  const remainder = count - expanded.length;
+  const sortedRemainders = [...bucketTargets].sort((a, b) => (count * b.ratio) % 1 - (count * a.ratio) % 1);
+  expanded.push(...sortedRemainders.slice(0, remainder));
+  const shuffled = expanded.sort(() => Math.random() - 0.5);
+
+  return shuffled.slice(0, count).map((bucket, index) => {
+    const templates = pollReactionTemplates[bucket.key];
+    const content = fillPollTemplate(templates[Math.floor(Math.random() * templates.length)], poll);
+    return {
+      id: `poll-fan-${poll.id}-${Date.now()}-${index}`,
+      fanName: nextFanNickname("zh"),
+      avatar: randomFanAvatar(),
+      language: "zh",
+      content,
+      translatedContent: content,
+      personaType: bucket.personaType,
+      messageKind: "reaction",
+      fromMessageId: fromMessageId ?? poll.id
+    };
+  });
+}
+
 export function generateLiveFanMessages(recentArtistMessage?: string, count = 30): FanMessage[] {
   return Array.from({ length: count }, (_, index) => {
     const shouldReact = Boolean(recentArtistMessage) && Math.random() < 0.3;
@@ -794,212 +1068,3 @@ export function generateLiveFanMessage(recentArtistMessage?: string): FanMessage
 export function translateFanMessage(messageId: string): FanMessage | undefined {
   return fanMessages.find((message) => message.id === messageId);
 }
-// let emojiIndex = 0;
-// let liveFanIndex = 0;
-
-// function randomFanAvatar() {
-//   return fanAvatarPool[Math.floor(Math.random() * fanAvatarPool.length)];
-// }
-
-// function nextFanNickname() {
-//   const random = Math.random();
-//   let pool = normalFanNicknamePool;
-//   if (random > 0.9) {
-//     pool = toxicFanNicknamePool;
-//   } else if (random > 0.68) {
-//     pool = chaoticFanNicknamePool;
-//   }
-//   return pool[Math.floor(Math.random() * pool.length)];
-// }
-
-// const liveFanMessagePool: Omit<FanMessage, "id">[] = [
-//   {
-//     fanName: "Riri",
-//     avatar: "🐰",
-//     personaType: "hype captain",
-//     messageKind: "ambient",
-//     language: "en",
-//     content: "I was about to sleep and then you appeared. Illegal timing.",
-//     translatedContent: "我正准备睡觉你就出现了，这个时机太犯规了。"
-//   },
-//   {
-//     fanName: "柚子冰",
-//     avatar: "🐱",
-//     personaType: "detail detective",
-//     messageKind: "ambient",
-//     language: "zh",
-//     content: "已读十遍，准备开始第十一遍。",
-//     translatedContent: "已读十遍，准备开始第十一遍。"
-//   },
-//   {
-//     fanName: "나비",
-//     avatar: "🐶",
-//     personaType: "comfort guardian",
-//     messageKind: "ambient",
-//     language: "ko",
-//     content: "밥은 먹었어요? 진짜로 물어보는 거예요.",
-//     translatedContent: "吃饭了吗？我是真的在问。"
-//   },
-//   {
-//     fanName: "そら",
-//     avatar: "🐼",
-//     personaType: "soft encourager",
-//     messageKind: "ambient",
-//     language: "jp",
-//     content: "今日の一言、ちゃんと受け取りました。",
-//     translatedContent: "今天的这一句话，我好好收到了。"
-//   },
-//   {
-//     fanName: "Cata",
-//     avatar: "🦊",
-//     personaType: "waiting-room fan",
-//     messageKind: "ambient",
-//     language: "es",
-//     content: "Prometo esperar, pero sube algo pronto.",
-//     translatedContent: "我保证会等你，但快点再发点什么。"
-//   },
-//   {
-//     fanName: "奶油卷",
-//     avatar: "🐻",
-//     personaType: "sleep police",
-//     messageKind: "ambient",
-//     language: "zh",
-//     content: "别硬撑啦，营业可以短，休息不能少。",
-//     translatedContent: "别硬撑啦，营业可以短，休息不能少。"
-//   },
-//   {
-//     fanName: "Jae",
-//     avatar: "🐹",
-//     personaType: "new fan sparkle",
-//     messageKind: "ambient",
-//     language: "en",
-//     content: "This message just fixed my whole commute.",
-//     translatedContent: "这条消息直接拯救了我的通勤路。"
-//   },
-//   {
-//     fanName: "하루",
-//     avatar: "🐨",
-//     personaType: "emoji minimalist",
-//     messageKind: "ambient",
-//     language: "ko",
-//     content: "짧아도 좋아요. 와준 게 좋아요.",
-//     translatedContent: "短也没关系。你来了就很好。"
-//   }
-// ];
-
-// const reactionFanMessagePool: Omit<FanMessage, "id">[] = [
-//   {
-//     fanName: "晚星",
-//     avatar: "🐯",
-//     personaType: "dramatic crier",
-//     messageKind: "reaction",
-//     language: "zh",
-//     content: "你刚才那句真的让我眼泪一下就上来了。",
-//     translatedContent: "你刚才那句真的让我眼泪一下就上来了。"
-//   },
-//   {
-//     fanName: "Mika",
-//     avatar: "🦁",
-//     personaType: "hype captain",
-//     messageKind: "reaction",
-//     language: "en",
-//     content: "That update just turned my whole night around.",
-//     translatedContent: "你刚才那条消息直接让我的夜晚变好了。"
-//   },
-//   {
-//     fanName: "半糖",
-//     avatar: "🐸",
-//     personaType: "teasing old fan",
-//     messageKind: "reaction",
-//     language: "zh",
-//     content: "刚才那句太短了，罚你下次多说一点。",
-//     translatedContent: "刚才那句太短了，罚你下次多说一点。"
-//   },
-//   {
-//     fanName: "별밤",
-//     avatar: "🐧",
-//     personaType: "comfort guardian",
-//     messageKind: "reaction",
-//     language: "ko",
-//     content: "그 말 들으니까 더 쉬었으면 좋겠어요.",
-//     translatedContent: "听到那句话之后，更希望你好好休息。"
-//   },
-//   {
-//     fanName: "Luz",
-//     avatar: "🦄",
-//     personaType: "long-distance fan",
-//     messageKind: "reaction",
-//     language: "es",
-//     content: "Ese mensaje llegó hasta mi zona horaria.",
-//     translatedContent: "那条消息传到了我的时区。"
-//   }
-// ];
-
-// export function generateFanEmojiReply(): string {
-//   const reply = emojiReplies[emojiIndex % emojiReplies.length];
-//   emojiIndex += 1;
-//   return reply;
-// }
-
-// export function generateFanMessagesAfterSend(message: string): FanMessage[] {
-//   const stamp = Date.now();
-//   return [
-//     {
-//       id: `generated-${stamp}-1`,
-//       fanName: nextFanNickname(),
-//       avatar: randomFanAvatar(),
-//       personaType: "protective big sibling",
-//       language: "en",
-//       content: "That line felt like a tiny blanket. Please rest too.",
-//       translatedContent: "那句话像一条小毯子。你也要休息。",
-//       fromMessageId: message
-//     },
-//     {
-//       id: `generated-${stamp}-2`,
-//       fanName: nextFanNickname(),
-//       avatar: randomFanAvatar(),
-//       personaType: "teasing old fan",
-//       language: "zh",
-//       content: "营业检查通过，但下次能不能多打两个字。",
-//       translatedContent: "营业检查通过，但下次能不能多打两个字。",
-//       fromMessageId: message
-//     },
-//     {
-//       id: `generated-${stamp}-3`,
-//       fanName: nextFanNickname(),
-//       avatar: randomFanAvatar(),
-//       personaType: "comfort guardian",
-//       language: "ko",
-//       content: "무리하지 말고 따뜻하게 있어요.",
-//       translatedContent: "别勉强自己，要暖暖地待着。主语是你。",
-//       fromMessageId: message
-//     },
-//     {
-//       id: `generated-${stamp}-4`,
-//       fanName: nextFanNickname(),
-//       avatar: randomFanAvatar(),
-//       personaType: "update chaser",
-//       language: "es",
-//       content: "Ya estoy esperando el próximo mensaje.",
-//       translatedContent: "我已经在等下一条消息了。"
-//     }
-//   ];
-// }
-
-// export function generateLiveFanMessage(recentArtistMessage?: string): FanMessage {
-//   const shouldReact = Boolean(recentArtistMessage) && liveFanIndex % 3 === 1;
-//   const pool = shouldReact ? reactionFanMessagePool : liveFanMessagePool;
-//   const base = pool[liveFanIndex % pool.length];
-//   liveFanIndex += 1;
-//   return {
-//     ...base,
-//     fanName: nextFanNickname(),
-//     avatar: randomFanAvatar(),
-//     fromMessageId: shouldReact ? recentArtistMessage : undefined,
-//     id: `live-${Date.now()}-${liveFanIndex}`
-//   };
-// }
-
-// export function translateFanMessage(messageId: string): FanMessage | undefined {
-//   return fanMessages.find((message) => message.id === messageId);
-// }

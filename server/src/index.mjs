@@ -1,18 +1,21 @@
 import http from "node:http";
-import { createDeviceSession, getBearerToken, resolveUserId, revokeSession } from "./auth.mjs";
-import { checkAiConnection, generateFanMessages, generateLiveFanMessage, generateLiveFanMessages, generateReactionBurst, getAiConfig } from "./aiClient.mjs";
+import { createDeviceSession, createJwtToken, getBearerToken, getSessionUserId, resolveUserId, revokeAllDeviceSessionsForUser, revokeSession } from "./auth.mjs";
+import { checkAiConnection, generateFanMessages, generateImageCaption, generateLiveFanMessage, generateLiveFanMessages, generateReactionBurst, getAiConfig, transcribeAudio } from "./aiClient.mjs";
 import { isDbEnabled } from "./db.mjs";
 import { pool } from "./db/pool.mjs";
 import { loadEnvFiles } from "./env.mjs";
 import { logError, logRequest, logSlowRequest } from "./logger.mjs";
 import { createOssPutSignature } from "./oss.mjs";
+import { decryptEmail, encryptEmail, generateEmailCode, hashEmail, hashEmailCode, hashIp, maskEmail, normalizeEmail } from "./emailSecurity.mjs";
 import { rateLimit, rateLimitAi } from "./rateLimit.mjs";
+import { sendEmailCode } from "./emailProvider.mjs";
 import { getAmbientMessages, warmUp } from "./ambientPool.mjs";
 import { extractAndSaveMemories, buildMemoryContext } from "./memoryExtractor.mjs";
 import { calcBusinessValueDelta, DAILY_SELF_MESSAGE_LIMIT, getReactionCount, todayCST } from "./growthEngine.mjs";
 import {
   addArtistFriend,
   addBusinessValue,
+  anonymizeUserAccount,
   applyGrowthSettlement,
   archiveStaleMemories,
   cleanReactionCache,
@@ -22,11 +25,16 @@ import {
   createIdolChatMessage,
   createReactionCacheSlot,
   createSelfMessage,
+  createEmailCodeRecord,
   deleteMemory,
   failReactionCache,
+  findOrCreateEmailUserAndMigrateGuest,
   finishAiGenerationJob,
   finishReactionCache,
   getBootstrap,
+  getEmailRateStats,
+  getUserAccount,
+  getUserPreferences,
   getOrCreateGrowthStats,
   getReactionCache,
   listFanMessages,
@@ -38,8 +46,10 @@ import {
   suppressMemory,
   updateMemoryMentioned,
   updateProfile,
+  updateUserPreferences,
   updateSelfMessageStatus,
-  upsertDeviceUser
+  upsertDeviceUser,
+  verifyEmailLoginCode
 } from "./repository.mjs";
 
 loadEnvFiles();
@@ -102,12 +112,12 @@ function sendJson(req, res, status, body, extraHeaders = {}) {
   res.end(JSON.stringify(body));
 }
 
-function readJson(req) {
+function readJson(req, maxBytes = 32_768) {
   return new Promise((resolve, reject) => {
     let raw = "";
     req.on("data", (chunk) => {
       raw += chunk;
-      if (raw.length > 32_768) {
+      if (raw.length > maxBytes) {
         reject(new Error("Request body too large."));
         req.destroy();
       }
@@ -127,11 +137,45 @@ function clientKey(req) {
   return String(req.headers["x-forwarded-for"] || req.socket.remoteAddress || "unknown").split(",")[0].trim();
 }
 
+function publicUserPayload(account, emailMasked = "") {
+  if (!account) return null;
+  return {
+    id: String(account.user.id),
+    nickname: account.profile?.nickname || "New Idol",
+    avatar: account.profile?.avatar || "IM",
+    role: account.user.role || "user",
+    isEmailVerified: Boolean(account.user.is_email_verified),
+    emailMasked: emailMasked || account.user.email_masked || "",
+    entitlement: account.entitlement
+  };
+}
+
+function accountResponse(account, normalizedEmail = "") {
+  const user = publicUserPayload(account, normalizedEmail ? maskEmail(normalizedEmail) : "");
+  return {
+    user,
+    profile: account?.profile || null,
+    entitlement: account?.entitlement || null,
+    preferences: account?.preferences || { fanNotificationsEnabled: false, autoTranslateEnabled: false }
+  };
+}
+
 function sendDatabaseUnavailable(req, res, requestId) {
   sendJson(req, res, 503, {
     error: "Database is not configured.",
     requestId
   });
+}
+
+function decodeAudioBase64(value) {
+  const raw = String(value || "").replace(/^data:[^;]+;base64,/, "").trim();
+  if (!raw) return Buffer.alloc(0);
+  return Buffer.from(raw, "base64");
+}
+
+function safeAudioMimeType(value) {
+  const mimeType = String(value || "audio/m4a").toLowerCase();
+  return /^audio\/[a-z0-9.+-]+$/.test(mimeType) ? mimeType : "audio/m4a";
 }
 
 async function requireDatabaseUser(req, res, requestId, body = {}) {
@@ -244,6 +288,154 @@ const server = http.createServer(async (req, res) => {
         "X-RateLimit-Remaining": "0",
         "X-RateLimit-Reset": String(limited.resetAt)
       });
+      return;
+    }
+
+    if (req.method === "POST" && url.pathname === "/api/auth/email/send") {
+      if (!isDbEnabled()) {
+        sendDatabaseUnavailable(req, res, id);
+        return;
+      }
+
+      const body = await readJson(req);
+      const purpose = String(body.purpose || "login");
+      if (purpose !== "login") {
+        sendJson(req, res, 400, { error: "Invalid email purpose.", requestId: id });
+        return;
+      }
+
+      let normalizedEmail;
+      try {
+        normalizedEmail = normalizeEmail(body.email);
+      } catch (error) {
+        sendJson(req, res, 400, { error: error instanceof Error ? error.message : "邮箱格式不正确。", requestId: id });
+        return;
+      }
+
+      const emailHash = hashEmail(normalizedEmail);
+      const ipHash = hashIp(ip);
+      const now = Date.now();
+      const stats = await getEmailRateStats({ emailHash, ipHash, now });
+      if (stats.emailCooldownCount > 0) {
+        sendJson(req, res, 429, { error: "EMAIL_COOLDOWN", message: "请 60 秒后再获取验证码。", requestId: id });
+        return;
+      }
+      if (stats.emailDailyCount >= 10) {
+        sendJson(req, res, 429, { error: "EMAIL_DAILY_LIMIT", message: "今天验证码次数已用完，请明天再试。", requestId: id });
+        return;
+      }
+      if (stats.ipHourlyCount >= 20) {
+        sendJson(req, res, 429, { error: "EMAIL_IP_LIMIT", message: "请求过于频繁，请稍后再试。", requestId: id });
+        return;
+      }
+
+      const code = generateEmailCode();
+      const codeHash = hashEmailCode({ normalizedEmail, code, purpose });
+      const expiresAt = now + 10 * 60 * 1000;
+      await createEmailCodeRecord({
+        id: `email-${now}-${Math.random().toString(36).slice(2, 10)}`,
+        emailHash,
+        codeHash,
+        purpose,
+        ipHash,
+        expiresAt,
+        createdAt: now
+      });
+      await sendEmailCode({ email: normalizedEmail, code });
+      sendJson(req, res, 200, {
+        ok: true,
+        cooldownSeconds: 60,
+        expiresInSeconds: 600,
+        emailMasked: maskEmail(normalizedEmail),
+        requestId: id
+      });
+      return;
+    }
+
+    if (req.method === "POST" && url.pathname === "/api/auth/email/login") {
+      if (!isDbEnabled()) {
+        sendDatabaseUnavailable(req, res, id);
+        return;
+      }
+
+      const body = await readJson(req);
+      const purpose = "login";
+      let normalizedEmail;
+      try {
+        normalizedEmail = normalizeEmail(body.email);
+      } catch (error) {
+        sendJson(req, res, 400, { error: error instanceof Error ? error.message : "邮箱格式不正确。", requestId: id });
+        return;
+      }
+      const code = String(body.code || "").trim();
+      if (!/^\d{6}$/.test(code)) {
+        sendJson(req, res, 400, { error: "请输入 6 位验证码。", requestId: id });
+        return;
+      }
+
+      const emailHash = hashEmail(normalizedEmail);
+      const codeHash = hashEmailCode({ normalizedEmail, code, purpose });
+      const verified = await verifyEmailLoginCode({ emailHash, codeHash, purpose, now: Date.now() });
+      if (!verified.ok) {
+        sendJson(req, res, 400, { error: "EMAIL_CODE_INVALID", message: verified.reason, requestId: id });
+        return;
+      }
+
+      const bearerToken = getBearerToken(req);
+      const guestUserId = bearerToken?.startsWith("idm_") ? await getSessionUserId(bearerToken) : "";
+      const account = await findOrCreateEmailUserAndMigrateGuest({
+        emailHash,
+        emailEncrypted: encryptEmail(normalizedEmail),
+        emailMasked: maskEmail(normalizedEmail),
+        guestUserId,
+        now: Date.now()
+      });
+      const token = createJwtToken(account.user.id);
+      sendJson(req, res, 200, {
+        ok: true,
+        token,
+        ...accountResponse(account, normalizedEmail),
+        requestId: id
+      });
+      return;
+    }
+
+    if (req.method === "GET" && url.pathname === "/api/me") {
+      const userId = await requireDatabaseUser(req, res, id);
+      if (!userId) return;
+      const account = await getUserAccount(userId);
+      if (!account) {
+        sendJson(req, res, 404, { error: "User not found.", requestId: id });
+        return;
+      }
+      let normalizedEmail = "";
+      try {
+        normalizedEmail = account.user.email_encrypted ? decryptEmail(account.user.email_encrypted) : "";
+      } catch {
+        normalizedEmail = "";
+      }
+      sendJson(req, res, 200, { ...accountResponse(account, normalizedEmail), requestId: id });
+      return;
+    }
+
+    if (req.method === "DELETE" && url.pathname === "/api/me/account") {
+      const body = await readJson(req);
+      const userId = await requireDatabaseUser(req, res, id, body);
+      if (!userId) return;
+      await anonymizeUserAccount(userId, Date.now());
+      const bearerToken = getBearerToken(req);
+      if (bearerToken.startsWith("idm_")) await revokeSession(bearerToken);
+      await revokeAllDeviceSessionsForUser(userId);
+      sendJson(req, res, 200, { ok: true, requestId: id });
+      return;
+    }
+
+    if (req.method === "PATCH" && url.pathname === "/api/me/preferences") {
+      const body = await readJson(req);
+      const userId = await requireDatabaseUser(req, res, id, body);
+      if (!userId) return;
+      const preferences = await updateUserPreferences(userId, body.preferences || body);
+      sendJson(req, res, 200, { preferences, requestId: id });
       return;
     }
 
@@ -437,7 +629,10 @@ const server = http.createServer(async (req, res) => {
       if (!userId) return;
       const { settleDailyGrowth } = await import("./growthEngine.mjs");
       const stats = await getOrCreateGrowthStats(userId);
-      const { patch, newAchievements, bonusFollowers } = settleDailyGrowth(stats);
+      const preferences = await getUserPreferences(userId);
+      const { patch, newAchievements, bonusFollowers } = settleDailyGrowth(stats, {
+        followerLossEnabled: preferences.fanNotificationsEnabled
+      });
       if (Object.keys(patch).length > 0) {
         await applyGrowthSettlement(userId, patch);
       }
@@ -479,6 +674,41 @@ const server = http.createServer(async (req, res) => {
       return;
     }
 
+    // POST /me/memories — 用户手动写入记忆
+    if (req.method === "POST" && url.pathname === "/me/memories") {
+      const body = await readJson(req);
+      const userId = await requireDatabaseUser(req, res, id, body);
+      if (!userId) return;
+      const content = String(body.content || "").trim();
+      const memoryType = String(body.memoryType || "life_event").trim();
+      if (!content) {
+        sendJson(req, res, 400, { error: "content is required.", requestId: id });
+        return;
+      }
+      const validTypes = ["preference", "habit", "life_event", "creative_context", "emotion"];
+      if (!validTypes.includes(memoryType)) {
+        sendJson(req, res, 400, { error: "Invalid memoryType.", requestId: id });
+        return;
+      }
+      const crypto = await import("node:crypto");
+      const { insertOrUpdateMemory } = await import("./repository.mjs");
+      const memoryId = `user-write-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+      const hash = crypto.createHash("sha256").update(`${userId}:${content}`).digest("hex");
+      const inserted = await insertOrUpdateMemory({
+        id: memoryId,
+        userId,
+        memoryType,
+        content,
+        importance: 4,
+        sourceMessageId: null,
+        sourcePreview: "用户手动写入",
+        hash,
+        now: Date.now()
+      });
+      sendJson(req, res, 200, { ok: true, inserted, requestId: id });
+      return;
+    }
+
     if (req.method === "POST" && url.pathname === "/ai/live-batch") {
       // AI 专用限流（比全局更严格）
       const aiLimited = rateLimitAi({ ip, operation: "live_batch" });
@@ -494,10 +724,163 @@ const server = http.createServer(async (req, res) => {
       const safeCount = Math.max(1, Math.min(Number(body.count) || 30, 60));
 
       // 从 ambient pool 取（内存缓冲 → PG → 模板 fallback，不调 AI）
-      const fanMessages = await getAmbientMessages(safeCount);
+      const fanMessages = await getAmbientMessages(safeCount, body.timeContext);
       sendJson(req, res, 200, { fanMessages, requestId: id }, {
         "X-RateLimit-Remaining": String(aiLimited.remaining)
       });
+      return;
+    }
+
+    if (req.method === "POST" && url.pathname === "/ai/image-caption") {
+      const aiLimited = rateLimitAi({ ip, operation: "image_caption" });
+      if (!aiLimited.allowed) {
+        sendJson(req, res, 429, { error: "AI rate limit exceeded.", requestId: id }, {
+          "X-RateLimit-Remaining": "0",
+          "X-RateLimit-Reset": String(aiLimited.resetAt)
+        });
+        return;
+      }
+
+      const body = await readJson(req);
+      const userId = await requireDatabaseUser(req, res, id, body);
+      if (!userId) return;
+      const aiStartedAt = Date.now();
+      const imageHost = (() => {
+        try { return new URL(String(body.imageUrl || "")).hostname; } catch { return "invalid"; }
+      })();
+      const jobId = await recordAiJobStart({
+        userId,
+        operation: "image_caption",
+        requestPayload: { imageHost }
+      });
+      try {
+        const imageCaption = await generateImageCaption(body.imageUrl);
+        await finishAiGenerationJob(jobId, {
+          status: "completed",
+          responsePayload: { imageCaption },
+          durationMs: Date.now() - aiStartedAt
+        });
+        sendJson(req, res, 200, { imageCaption, requestId: id }, {
+          "X-RateLimit-Remaining": String(aiLimited.remaining)
+        });
+      } catch (error) {
+        await recordAiJobFailure(jobId, error, aiStartedAt);
+        throw error;
+      }
+      return;
+    }
+
+    if (req.method === "POST" && (url.pathname === "/api/voice/transcribe" || url.pathname === "/ai/reaction-burst-from-audio")) {
+      const aiLimited = rateLimitAi({ ip, operation: "voice_reaction_burst" });
+      if (!aiLimited.allowed) {
+        sendJson(req, res, 429, { error: "AI rate limit exceeded.", requestId: id }, {
+          "X-RateLimit-Remaining": "0",
+          "X-RateLimit-Reset": String(aiLimited.resetAt)
+        });
+        return;
+      }
+
+      const maxJsonBytes = Number(process.env.MAX_AUDIO_JSON_BYTES || 7_000_000);
+      const maxAudioBytes = Number(process.env.MAX_AUDIO_BYTES || 5_000_000);
+      const body = await readJson(req, maxJsonBytes);
+      const userId = await resolveUserId(req, body);
+      const sourceMessageId = String(body.sourceMessageId || `voice-${Date.now()}`).trim();
+      const audioUrl = typeof body.audioUrl === "string" && /^https?:\/\//.test(body.audioUrl)
+        ? body.audioUrl.trim()
+        : "";
+      const audioBuffer = audioUrl ? Buffer.alloc(0) : decodeAudioBase64(body.audioBase64);
+      if (!sourceMessageId) {
+        sendJson(req, res, 400, { error: "sourceMessageId is required.", requestId: id });
+        return;
+      }
+      if (!audioUrl && !audioBuffer.length) {
+        sendJson(req, res, 400, { error: "audioUrl or audioBase64 is required.", requestId: id });
+        return;
+      }
+      if (audioBuffer.length && audioBuffer.length > maxAudioBytes) {
+        sendJson(req, res, 413, { error: "Audio file is too large.", requestId: id });
+        return;
+      }
+
+      const aiStartedAt = Date.now();
+      const skipFanMessages = body.skipFanMessages === true;
+      const safeCount = skipFanMessages ? 0 : Math.max(8, Math.min(Number(body.count) || 32, 40));
+      const mimeType = safeAudioMimeType(body.mimeType);
+      const audioDataUrl = audioUrl || (String(body.audioBase64 || "").startsWith("data:")
+        ? String(body.audioBase64)
+        : `data:${mimeType};base64,${body.audioBase64}`);
+      const jobId = await recordAiJobStart({
+        userId,
+        operation: "voice_reaction_burst",
+        sourceMessageId,
+        requestPayload: {
+          audioBytes: audioBuffer.length || null,
+          audioUrl: audioUrl || null,
+          durationMs: Number(body.durationMs) || null,
+          mimeType,
+          count: safeCount
+        }
+      });
+      try {
+        const recognizedText = await transcribeAudio({ audioBase64: audioDataUrl, audioBuffer, mimeType });
+        if (!recognizedText) {
+          sendJson(req, res, 400, { error: "ASR returned empty text.", requestId: id });
+          await finishAiGenerationJob(jobId, {
+            status: "failed",
+            errorMessage: "ASR returned empty text.",
+            durationMs: Date.now() - aiStartedAt
+          });
+          return;
+        }
+
+        let memoryContext = "";
+        let candidateMemories = [];
+        if (!skipFanMessages && userId && isDbEnabled()) {
+          candidateMemories = await pickMemoriesForGeneration(userId).catch(() => []);
+          memoryContext = buildMemoryContext(candidateMemories);
+        }
+
+        const fanMessages = skipFanMessages
+          ? []
+          : await generateReactionBurst(recognizedText, safeCount, body.quotedContent || null, memoryContext, body.timeContext, body.imageCaption || "");
+
+        if (!skipFanMessages && candidateMemories.length > 0 && isDbEnabled()) {
+          const usedIds = fanMessages
+            .flatMap((m) => (Array.isArray(m.usedMemoryIds) ? m.usedMemoryIds : []))
+            .filter((mid) => candidateMemories.some((cm) => cm.id === mid));
+          const deduped = [...new Set(usedIds)].slice(0, 1);
+          if (deduped.length > 0) {
+            updateMemoryMentioned(deduped, Date.now()).catch(() => {});
+          }
+        }
+
+        if (userId && isDbEnabled()) {
+          await createSelfMessage(userId, {
+            id: sourceMessageId,
+            text: recognizedText,
+            status: "sent",
+            createdAt: body.createdAt || null,
+            attachmentType: "voice",
+            attachmentUri: audioUrl || null
+          });
+          await createFanMessages(userId, fanMessages, sourceMessageId);
+        }
+
+        await finishAiGenerationJob(jobId, {
+          status: "completed",
+          responsePayload: {
+            recognizedTextLength: recognizedText.length,
+            count: fanMessages.length
+          },
+          durationMs: Date.now() - aiStartedAt
+        });
+        sendJson(req, res, 200, { recognizedText, fanMessages, requestId: id }, {
+          "X-RateLimit-Remaining": String(aiLimited.remaining)
+        });
+      } catch (error) {
+        await recordAiJobFailure(jobId, error, aiStartedAt);
+        throw error;
+      }
       return;
     }
 
@@ -560,7 +943,7 @@ const server = http.createServer(async (req, res) => {
         userId,
         operation: "reaction_burst",
         sourceMessageId,
-        requestPayload: { message: body.message, count: safeCount }
+        requestPayload: { message: body.message, count: safeCount, imageCaption: body.imageCaption ? "present" : "none" }
       });
       try {
         // Phase 5: 注入用户记忆上下文
@@ -571,7 +954,7 @@ const server = http.createServer(async (req, res) => {
           memoryContext = buildMemoryContext(candidateMemories);
         }
 
-        const fanMessages = await generateReactionBurst(body.message, safeCount, body.quotedContent || null, memoryContext);
+        const fanMessages = await generateReactionBurst(body.message, safeCount, body.quotedContent || null, memoryContext, body.timeContext, body.imageCaption || "");
 
         // Phase 5: 收集本批次实际使用的 memoryIds，更新 mention 统计
         if (candidateMemories.length > 0 && isDbEnabled()) {
@@ -621,7 +1004,7 @@ const server = http.createServer(async (req, res) => {
         requestPayload: { message: body.message, count: body.count }
       });
       try {
-        const fanMessages = await generateFanMessages(body.message, body.count);
+        const fanMessages = await generateFanMessages(body.message, body.count, body.timeContext);
         if (userId && body.persist !== false && isDbEnabled()) {
           await createFanMessages(userId, fanMessages, body.sourceMessageId);
         }
@@ -651,7 +1034,7 @@ const server = http.createServer(async (req, res) => {
         requestPayload: { recentArtistMessage: body.recentArtistMessage }
       });
       try {
-        const fanMessage = await generateLiveFanMessage(body.recentArtistMessage);
+        const fanMessage = await generateLiveFanMessage(body.recentArtistMessage, body.timeContext);
         if (userId && body.persist !== false && isDbEnabled()) {
           await createFanMessages(userId, [fanMessage], body.sourceMessageId);
         }
@@ -682,7 +1065,7 @@ const server = http.createServer(async (req, res) => {
       });
       try {
         const safeCount = Math.max(1, Math.min(Number(body.count) || 8, 30));
-        const fanMessages = await generateLiveFanMessages(body.recentArtistMessage, safeCount);
+        const fanMessages = await generateLiveFanMessages(body.recentArtistMessage, safeCount, body.timeContext);
         if (userId && body.persist !== false && isDbEnabled()) {
           await createFanMessages(userId, fanMessages, body.sourceMessageId);
         }
@@ -711,7 +1094,7 @@ const server = http.createServer(async (req, res) => {
 
       const body = await readJson(req);
       const count = Math.max(1, Math.min(Number(body.count) || 14, 50));
-      const fanMessages = await pickHistoryMessages(count);
+      const fanMessages = await pickHistoryMessages(count, body.timeContext);
       sendJson(req, res, 200, { fanMessages, requestId: id }, {
         "X-RateLimit-Remaining": String(limited.remaining)
       });
@@ -728,7 +1111,7 @@ const server = http.createServer(async (req, res) => {
       error
     });
     sendJson(req, res, 500, {
-      error: "Internal server error.",
+      error: error instanceof Error ? error.message : "Internal server error.",
       requestId: id
     });
   } finally {

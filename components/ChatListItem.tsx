@@ -2,6 +2,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { Avatar } from "@/components/Avatar";
 import { colors } from "@/constants/theme";
+import { useAppTheme } from "@/context/AppThemeContext";
 
 type ChatListItemProps = {
   avatar: string;
@@ -22,19 +23,24 @@ export default function ChatListItem({
   showDelete,
   backgroundColor
 }: ChatListItemProps) {
+  const theme = useAppTheme();
   return (
-    <Pressable onPress={onPress} style={({ pressed }) => [styles.row, pressed && styles.pressed]}>
+    <Pressable onPress={onPress} style={({ pressed }) => [
+      styles.row,
+      { backgroundColor: theme.colors.card, borderColor: theme.colors.border },
+      pressed && styles.pressed
+    ]}>
       <Avatar label={avatar} size={54} backgroundColor={backgroundColor} />
       <View style={styles.textWrap}>
-        <Text style={styles.name}>{name}</Text>
-        <Text numberOfLines={1} style={styles.last}>{lastMessage}</Text>
+        <Text style={[styles.name, { color: theme.colors.text }]}>{name}</Text>
+        <Text numberOfLines={1} style={[styles.last, { color: theme.colors.mutedText }]}>{lastMessage}</Text>
       </View>
       {showDelete ? (
         <Pressable onPress={onDelete} style={styles.deleteButton}>
           <Ionicons name="remove" size={18} color={colors.card} />
         </Pressable>
       ) : (
-        <Ionicons name="chevron-forward" size={19} color={colors.mutedText} />
+        <Ionicons name="chevron-forward" size={19} color={theme.colors.mutedText} />
       )}
     </Pressable>
   );
@@ -42,14 +48,12 @@ export default function ChatListItem({
 
 const styles = StyleSheet.create({
   row: {
-    backgroundColor: colors.card,
     borderRadius: 24,
     flexDirection: "row",
     alignItems: "center",
     gap: 13,
     padding: 14,
     borderWidth: 1,
-    borderColor: colors.border
   },
   pressed: {
     opacity: 0.74
@@ -59,12 +63,10 @@ const styles = StyleSheet.create({
     gap: 4
   },
   name: {
-    color: colors.text,
     fontSize: 16,
     fontWeight: "800"
   },
   last: {
-    color: colors.mutedText,
     fontSize: 13
   },
   deleteButton: {

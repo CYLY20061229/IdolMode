@@ -84,6 +84,7 @@ export default function FanMessagesScreen() {
     lastIdolMessage,
     reactionQueue: contextReactionQueue,
     translatedMessageIds,
+    preferences,
     toggleFanMessageTranslation,
     quoteFanMessage
   } = useIdolMode();
@@ -235,7 +236,7 @@ export default function FanMessagesScreen() {
           next = historyQueue.current.shift();
         } else {
           // 三队列全空：用本地 mock fallback 保证消息不断流
-          next = mockLiveFanMessage(lastIdolMessage);
+          next = mockLiveFanMessage(lastIdolMessageRef.current);
           next = { ...next, id: `local-fallback-${Date.now()}` };
         }
 
@@ -314,7 +315,9 @@ export default function FanMessagesScreen() {
           <FanMessageCard
             key={message.id}
             message={message}
-            translated={translatedMessageIds.includes(message.id)}
+            translated={preferences.autoTranslateEnabled
+              ? !translatedMessageIds.includes(message.id)
+              : translatedMessageIds.includes(message.id)}
             onTranslate={() => toggleFanMessageTranslation(message.id)}
             onLongPress={() => setSelectedMessage(message)}
           />

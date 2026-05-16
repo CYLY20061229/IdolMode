@@ -2,16 +2,18 @@ import { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  Modal,
   Pressable,
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   View,
 } from "react-native";
 import { router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { Memory, MemoryType } from "@/types/idol";
-import { deleteMemory, fetchMemories, suppressMemory } from "@/services/memoryApi";
+import { deleteMemory, fetchMemories, suppressMemory, writeMemory } from "@/services/memoryApi";
 import { colors, shadow, spacing } from "@/constants/theme";
 import IconButton from "@/components/IconButton";
 
@@ -20,8 +22,8 @@ import IconButton from "@/components/IconButton";
 const TYPE_LABEL: Record<MemoryType, string> = {
   preference: "偏好",
   habit: "习惯",
-  life_event: "生活事件",
-  creative_context: "创作背景",
+  life_event: "未来事件",
+  creative_context: "故事",
   emotion: "情绪",
 };
 
@@ -136,6 +138,10 @@ function MemoryCard({ memory, onDelete, onSuppress }: MemoryCardProps) {
 export default function MyMemoriesScreen() {
   const [memories, setMemories] = useState<Memory[]>([]);
   const [loading, setLoading] = useState(true);
+  const [writeVisible, setWriteVisible] = useState(false);
+  const [writeContent, setWriteContent] = useState("");
+  const [writeType, setWriteType] = useState<MemoryType>("life_event");
+  const [writing, setWriting] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -162,6 +168,21 @@ export default function MyMemoriesScreen() {
     }
   };
 
+  const handleWrite = async () => {
+    const trimmed = writeContent.trim();
+    if (!trimmed) return;
+    setWriting(true);
+    const ok = await writeMemory(trimmed, writeType);
+    if (ok) {
+      setWriteContent("");
+      setWriteVisible(false);
+      void load();
+    } else {
+      Alert.alert("写入失败", "请稍后再试。");
+    }
+    setWriting(false);
+  };
+
   const active = memories.filter((m) => !m.user_suppressed);
   const suppressed = memories.filter((m) => m.user_suppressed);
 
@@ -170,8 +191,13 @@ export default function MyMemoriesScreen() {
       {/* 顶栏 */}
       <View style={styles.header}>
         <IconButton name="arrow-back" onPress={() => router.back()} accessibilityLabel="返回" />
-        <Text style={styles.title}>AI 记忆</Text>
-        <View style={{ width: 36 }} />
+        <Text style={styles.title}>记忆与日程</Text>
+        <Pressable
+          onPress={() => setWriteVisible(true)}
+          style={({ pressed }) => [styles.writeBtn, pressed && styles.writeBtnPressed]}
+        >
+          <Ionicons name="add" size={22} color={colors.card} />
+        </Pressable>
       </View>
 
       {loading ? (
@@ -219,6 +245,50 @@ export default function MyMemoriesScreen() {
           )}
         </ScrollView>
       )}
+
+      {/* 写入记忆弹窗 */}
+      <Modal visible={writeVisible} transparent animationType="slide" onRequestClose={() => setWriteVisible(false)}>
+        <Pressable style={writeModal.backdrop} onPress={() => setWriteVisible(false)}>
+          <Pressable style={[writeModal.sheet, { backgroundColor: colors.card, borderColor: colors.border }]} onPress={() => {}}>
+            <Text style={writeModal.title}>写入记忆</Text>
+            <Text style={[writeModal.label, { color: colors.mutedText }]}>类型</Text>
+            <View style={writeModal.typeRow}>
+              {(["life_event", "preference", "habit", "creative_context", "emotion"] as MemoryType[]).map((t) => (
+                <Pressable
+                  key={t}
+                  onPress={() => setWriteType(t)}
+                  style={[writeModal.typeChip, writeType === t && { backgroundColor: colors.primaryDeep, borderColor: colors.primaryDeep }]}
+                >
+                  <Text style={[writeModal.typeChipText, writeType === t && { color: colors.card }]}>{TYPE_LABEL[t]}</Text>
+                </Pressable>
+              ))}
+            </View>
+            <Text style={[writeModal.label, { color: colors.mutedText }]}>内容</Text>
+            <TextInput
+              style={[writeModal.input, { backgroundColor: colors.background, borderColor: colors.border, color: colors.text }]}
+              value={writeContent}
+              onChangeText={setWriteContent}
+              placeholder="写下你想让 AI 记住的内容…"
+              placeholderTextColor={colors.mutedText}
+              multiline
+              maxLength={300}
+            />
+            <Text style={writeModal.charCount}>{writeContent.length}/300</Text>
+            <View style={writeModal.actions}>
+              <Pressable style={[writeModal.btn, { backgroundColor: colors.background }]} onPress={() => setWriteVisible(false)}>
+                <Text style={[writeModal.btnText, { color: colors.mutedText }]}>取消</Text>
+              </Pressable>
+              <Pressable
+                style={[writeModal.btn, { backgroundColor: colors.primaryDeep }, writing && { opacity: 0.65 }]}
+                onPress={handleWrite}
+                disabled={writing || !writeContent.trim()}
+              >
+                <Text style={[writeModal.btnText, { color: colors.card }]}>{writing ? "写入中…" : "写入"}</Text>
+              </Pressable>
+            </View>
+          </Pressable>
+        </Pressable>
+      </Modal>
     </View>
   );
 }
@@ -369,5 +439,92 @@ const styles = StyleSheet.create({
   actionText: {
     fontSize: 12,
     color: colors.mutedText,
+  },
+  writeBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: colors.primaryDeep,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  writeBtnPressed: {
+    opacity: 0.75,
+  },
+});
+
+const writeModal = StyleSheet.create({
+  backdrop: {
+    flex: 1,
+    backgroundColor: "rgba(47,42,53,0.28)",
+    justifyContent: "flex-end",
+    padding: 18,
+  },
+  sheet: {
+    backgroundColor: colors.card,
+    borderRadius: 28,
+    borderWidth: 1,
+    borderColor: colors.border,
+    padding: 22,
+    gap: 12,
+  },
+  title: {
+    fontSize: 20,
+    fontWeight: "900",
+    color: colors.text,
+    marginBottom: 4,
+  },
+  label: {
+    fontSize: 13,
+    fontWeight: "700",
+    marginBottom: -4,
+  },
+  typeRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 6,
+  },
+  typeChip: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.background,
+  },
+  typeChipText: {
+    fontSize: 12,
+    fontWeight: "800",
+    color: colors.mutedText,
+  },
+  input: {
+    borderRadius: 16,
+    borderWidth: 1,
+    padding: 13,
+    minHeight: 88,
+    fontSize: 15,
+    textAlignVertical: "top",
+  },
+  charCount: {
+    fontSize: 11,
+    color: colors.mutedText,
+    textAlign: "right",
+    marginTop: -4,
+  },
+  actions: {
+    flexDirection: "row",
+    gap: 10,
+    marginTop: 4,
+  },
+  btn: {
+    flex: 1,
+    height: 46,
+    borderRadius: 18,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  btnText: {
+    fontSize: 15,
+    fontWeight: "900",
   },
 });

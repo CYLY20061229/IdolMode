@@ -1,6 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import { Text, View, StyleSheet } from "react-native";
-import { colors } from "@/constants/theme";
+import { useAppTheme } from "@/context/AppThemeContext";
 
 type TabIconProps = {
   name: keyof typeof Ionicons.glyphMap;
@@ -9,10 +9,11 @@ type TabIconProps = {
 };
 
 export default function TabIcon({ name, label, focused }: TabIconProps) {
+  const theme = useAppTheme();
   return (
     <View style={styles.wrap}>
-      <Ionicons name={name} size={22} color={focused ? colors.primaryDeep : colors.mutedText} />
-      <Text style={[styles.label, focused && styles.focused]}>{label}</Text>
+      <Ionicons name={name} size={22} color={focused ? theme.colors.primaryDeep : theme.colors.mutedText} />
+      <Text style={[styles.label, { color: focused ? theme.colors.primaryDeep : theme.colors.mutedText }]}>{label}</Text>
     </View>
   );
 }
@@ -25,11 +26,7 @@ const styles = StyleSheet.create({
     minWidth: 70
   },
   label: {
-    color: colors.mutedText,
     fontSize: 11,
     fontWeight: "700"
-  },
-  focused: {
-    color: colors.primaryDeep
   }
 });

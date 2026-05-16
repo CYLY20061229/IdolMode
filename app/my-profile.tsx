@@ -151,6 +151,7 @@ function EditModal({ visible, onClose }: { visible: boolean; onClose: () => void
   const [nickname, setNickname] = useState(myProfile.nickname || "");
   const [signature, setSignature] = useState(myProfile.signature || "");
   const [statusText, setStatusText] = useState(myProfile.statusText || "");
+  const [fanName, setFanName] = useState(myProfile.fanName || "");
   const [avatar, setAvatar] = useState(myProfile.avatar || "");
   const [saving, setSaving] = useState(false);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
@@ -177,11 +178,20 @@ function EditModal({ visible, onClose }: { visible: boolean; onClose: () => void
     setSaving(true);
     try {
       const isImageAvatar = /^(https?):/.test(avatar);
+      let cleanFanName: string | null = null;
+      const rawFanName = fanName.replace(/[\r\n]/g, "");
+      if (rawFanName.trim().length > 0) {
+        const cleaned = rawFanName.trim().replace(/^@+/, "").replace(/\s+/g, " ").trim();
+        if (cleaned.length > 0) {
+          cleanFanName = cleaned.slice(0, 24);
+        }
+      }
       const savedProfile = await updateProfile({
         ...myProfile,
         nickname: nickname.trim(),
         signature: signature.trim(),
         statusText: statusText.trim(),
+        fanName: cleanFanName,
         avatar: isImageAvatar ? avatar : (avatar.slice(0, 3).toUpperCase() || "我")
       });
       setAvatar(savedProfile.avatar || "");
@@ -240,6 +250,20 @@ function EditModal({ visible, onClose }: { visible: boolean; onClose: () => void
             placeholder="此刻的状态…"
             placeholderTextColor={colors.mutedText}
             maxLength={30}
+            returnKeyType="next"
+          />
+
+          <Text style={em.label}>粉丝名（选填）</Text>
+          <TextInput
+            style={em.input}
+            value={fanName}
+            onChangeText={(text) => {
+              const cleaned = text.replace(/[\r\n]/g, "").slice(0, 24);
+              setFanName(cleaned);
+            }}
+            placeholder="给你的粉丝起个名字"
+            placeholderTextColor={colors.mutedText}
+            maxLength={24}
             returnKeyType="done"
           />
 

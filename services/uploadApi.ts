@@ -1,7 +1,8 @@
 import { apiFetch } from "@/services/apiClient";
 
-export type UploadKind = "avatar" | "chat-image" | "sticker" | "profile-background";
+export type UploadKind = "avatar" | "chat-image" | "sticker" | "profile-background" | "voice";
 const MAX_IMAGE_BYTES = 8 * 1024 * 1024;
+const MAX_AUDIO_BYTES = 16 * 1024 * 1024;
 
 type OssUploadSignResponse = {
   upload?: {
@@ -27,15 +28,53 @@ function mimeTypeFromUri(uri: string): string {
   return "image/jpeg";
 }
 
+function audioMimeTypeFromUri(uri: string): string {
+  const clean = uri.split("?")[0].toLowerCase();
+  if (clean.endsWith(".webm")) return "audio/webm";
+  if (clean.endsWith(".mp3")) return "audio/mpeg";
+  if (clean.endsWith(".wav")) return "audio/wav";
+  if (clean.endsWith(".aac")) return "audio/aac";
+  if (clean.endsWith(".mp4")) return "audio/mp4";
+  return "audio/m4a";
+}
+
 function delay(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 function isRetryableUploadError(error: unknown): boolean {
   if (!(error instanceof Error)) return true;
-  const match = error.message.match(/图片上传失败：(\d+)/);
+  const match = error.message.match(/(?:图片|语音)上传失败：(\d+)/);
   if (!match) return true;
   return Number(match[1]) >= 500;
+}
+
+export async function uploadAudioToOss(uri: string, options: UploadOptions = {}): Promise<{ url: string; mimeType: string }> {
+  if (/^https?:/.test(uri)) return { url: uri, mimeType: audioMimeTypeFromUri(uri) };
+
+  const mimeType = audioMimeTypeFromUri(uri);
+  const upload = await requestUploadSign("voice", mimeType);
+  const fileResponse = await fetch(uri);
+  const body = await fileResponse.blob();
+  if (body.size > MAX_AUDIO_BYTES) {
+    throw new Error("语音不能超过 16MB。");
+  }
+
+  const maxRetries = options.retries ?? 2;
+  let lastError: unknown;
+  for (let attempt = 0; attempt <= maxRetries; attempt += 1) {
+    try {
+      options.onProgress?.(0);
+      await putBlobWithProgress(upload.uploadUrl, upload.method, upload.headers, body, options, "语音");
+      return { url: upload.publicUrl, mimeType };
+    } catch (error) {
+      lastError = error;
+      if (attempt >= maxRetries || !isRetryableUploadError(error)) break;
+      await delay(600 * (attempt + 1));
+    }
+  }
+
+  throw lastError instanceof Error ? lastError : new Error("语音上传失败，请重试。");
 }
 
 async function requestUploadSign(kind: UploadKind, mimeType: string) {
@@ -54,7 +93,7 @@ async function requestUploadSign(kind: UploadKind, mimeType: string) {
   return data.upload;
 }
 
-function putBlobWithProgress(uploadUrl: string, method: string, headers: Record<string, string>, body: Blob, options: UploadOptions): Promise<void> {
+function putBlobWithProgress(uploadUrl: string, method: string, headers: Record<string, string>, body: Blob, options: UploadOptions, label = "图片"): Promise<void> {
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest();
     xhr.open(method, uploadUrl);
@@ -69,10 +108,10 @@ function putBlobWithProgress(uploadUrl: string, method: string, headers: Record<
         resolve();
         return;
       }
-      reject(new Error(`图片上传失败：${xhr.status}`));
+      reject(new Error(`${label}上传失败：${xhr.status}`));
     };
-    xhr.onerror = () => reject(new Error("网络不稳定，图片上传失败。"));
-    xhr.ontimeout = () => reject(new Error("图片上传超时，请重试。"));
+    xhr.onerror = () => reject(new Error(`网络不稳定，${label}上传失败。`));
+    xhr.ontimeout = () => reject(new Error(`${label}上传超时，请重试。`));
     xhr.timeout = 45000;
     xhr.send(body);
   });
@@ -94,7 +133,7 @@ export async function uploadImageToOss(uri: string, kind: UploadKind, options: U
   for (let attempt = 0; attempt <= maxRetries; attempt += 1) {
     try {
       options.onProgress?.(0);
-      await putBlobWithProgress(upload.uploadUrl, upload.method, upload.headers, body, options);
+      await putBlobWithProgress(upload.uploadUrl, upload.method, upload.headers, body, options, "图片");
       return upload.publicUrl;
     } catch (error) {
       lastError = error;

@@ -1,4 +1,4 @@
-import { Memory } from "@/types/idol";
+import { Memory, MemoryType } from "@/types/idol";
 import { apiFetch } from "./apiClient";
 
 /**
@@ -39,6 +39,22 @@ export async function suppressMemory(memoryId: string): Promise<boolean> {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ action: "suppress" }),
+    });
+    return res.ok;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * 用户手动写入一条记忆，写入后立即持久化到数据库。
+ */
+export async function writeMemory(content: string, memoryType: MemoryType): Promise<boolean> {
+  try {
+    const res = await apiFetch("/me/memories", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ content, memoryType }),
     });
     return res.ok;
   } catch {

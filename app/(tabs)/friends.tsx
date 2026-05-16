@@ -7,11 +7,13 @@ import IconButton from "@/components/IconButton";
 import PrimaryButton from "@/components/PrimaryButton";
 import ProfileCard from "@/components/ProfileCard";
 import { colors, spacing } from "@/constants/theme";
+import { useAppTheme } from "@/context/AppThemeContext";
 import { useIdolMode } from "@/context/IdolModeContext";
 import { pickProfileAvatarImage } from "@/services/localMedia";
 import { uploadImageToOss } from "@/services/uploadApi";
 
 export default function FriendsScreen() {
+  const theme = useAppTheme();
   const { myProfile, updateProfile, recommendedArtists } = useIdolMode();
   const [editing, setEditing] = useState(false);
   const [nickname, setNickname] = useState(myProfile.nickname);
@@ -50,17 +52,17 @@ export default function FriendsScreen() {
   };
 
   return (
-    <View style={styles.screen}>
+    <View style={[styles.screen, { backgroundColor: theme.colors.background }]}>
       <View style={styles.header}>
-        <Text style={styles.title}>好友</Text>
+        <Text style={[styles.title, { color: theme.colors.text }]}>好友</Text>
         <IconButton name="search-outline" accessibilityLabel="搜索好友" />
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
-        <Text style={styles.sectionTitle}>我的资料</Text>
+        <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>我的资料</Text>
         <ProfileCard profile={myProfile} onPress={() => router.push("/my-profile")} />
 
-        <Text style={styles.sectionTitle}>推荐艺人</Text>
+        <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>推荐艺人</Text>
         <View style={styles.list}>
           {recommendedArtists.map((artist) => (
             <ArtistCard key={artist.id} artist={artist} onPress={() => router.push(`/artist/${artist.id}`)} />
@@ -70,13 +72,13 @@ export default function FriendsScreen() {
 
       <Modal visible={editing} transparent animationType="fade" onRequestClose={() => setEditing(false)}>
         <View style={styles.modalBackdrop}>
-          <View style={styles.modalCard}>
-            <Text style={styles.modalTitle}>编辑资料</Text>
+          <View style={[styles.modalCard, { backgroundColor: theme.colors.card }]}>
+            <Text style={[styles.modalTitle, { color: theme.colors.text }]}>编辑资料</Text>
             <View style={styles.avatarEditRow}>
               <Avatar label={avatar} size={72} />
               <View style={styles.avatarEditText}>
-                <Text style={styles.avatarLabel}>头像</Text>
-                <Text style={styles.avatarHint}>头像会上传到云端，并在不同设备保持一致。</Text>
+                <Text style={[styles.avatarLabel, { color: theme.colors.text }]}>头像</Text>
+                <Text style={[styles.avatarHint, { color: theme.colors.mutedText }]}>头像会上传到云端，并在不同设备保持一致。</Text>
               </View>
             </View>
             <PrimaryButton title={uploadingAvatar ? "头像上传中…" : "选择头像"} onPress={pickAvatar} variant="light" />
@@ -92,7 +94,6 @@ export default function FriendsScreen() {
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: colors.background,
     paddingTop: 58,
     paddingHorizontal: spacing.screen
   },
@@ -102,7 +103,6 @@ const styles = StyleSheet.create({
     justifyContent: "space-between"
   },
   title: {
-    color: colors.text,
     fontSize: 34,
     fontWeight: "900"
   },
@@ -112,7 +112,6 @@ const styles = StyleSheet.create({
     gap: 14
   },
   sectionTitle: {
-    color: colors.text,
     fontSize: 17,
     fontWeight: "900",
     marginTop: 8
@@ -127,13 +126,11 @@ const styles = StyleSheet.create({
     padding: 22
   },
   modalCard: {
-    backgroundColor: colors.card,
     borderRadius: 28,
     padding: 20,
     gap: 12
   },
   modalTitle: {
-    color: colors.text,
     fontSize: 22,
     fontWeight: "900"
   },
@@ -147,12 +144,10 @@ const styles = StyleSheet.create({
     gap: 4
   },
   avatarLabel: {
-    color: colors.text,
     fontSize: 15,
     fontWeight: "900"
   },
   avatarHint: {
-    color: colors.mutedText,
     fontSize: 12,
     lineHeight: 17
   }

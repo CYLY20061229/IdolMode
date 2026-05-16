@@ -6,11 +6,21 @@ import { colors } from "@/constants/theme";
 const EMOJI_POOL = ["🌸", "💜", "✨", "🥹", "🫶", "💫", "🌟", "🎀", "🍬", "🌈"];
 
 type FanEmojiBubbleProps = {
+  seed?: string;
   onPress?: () => void;
 };
 
-export default function FanEmojiBubble({ onPress }: FanEmojiBubbleProps) {
-  const [index, setIndex] = useState(() => Math.floor(Math.random() * EMOJI_POOL.length));
+function indexFromSeed(seed?: string) {
+  if (!seed) return Math.floor(Math.random() * EMOJI_POOL.length);
+  let total = 0;
+  for (let i = 0; i < seed.length; i += 1) {
+    total += seed.charCodeAt(i) * (i + 1);
+  }
+  return total % EMOJI_POOL.length;
+}
+
+export default function FanEmojiBubble({ seed, onPress }: FanEmojiBubbleProps) {
+  const [index, setIndex] = useState(() => indexFromSeed(seed));
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -22,7 +32,7 @@ export default function FanEmojiBubble({ onPress }: FanEmojiBubbleProps) {
   return (
     <Pressable onPress={onPress} style={styles.row}>
       <View style={styles.bubble}>
-        <Text style={styles.label}>来自粉丝</Text>
+        <Text style={styles.label}>FROM FAN</Text>
         <Text style={styles.emoji}>{EMOJI_POOL[index]}</Text>
       </View>
     </Pressable>

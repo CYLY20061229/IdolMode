@@ -1,5 +1,5 @@
 import { Image, StyleSheet, Text, View } from "react-native";
-import { colors } from "@/constants/theme";
+import { useAppTheme } from "@/context/AppThemeContext";
 
 type AvatarProps = {
   label: string;
@@ -7,16 +7,21 @@ type AvatarProps = {
   backgroundColor?: string;
 };
 
-export function Avatar({ label, size = 52, backgroundColor = colors.secondary }: AvatarProps) {
+export function Avatar({ label, size = 52, backgroundColor }: AvatarProps) {
+  const theme = useAppTheme();
   const isImageUri = /^(file|content|data|https?):/.test(label);
   const isGraphicLabel = /[^\w\s]/.test(label);
+  const resolvedBackground = backgroundColor ?? theme.colors.secondary;
 
   return (
-    <View style={[styles.avatar, { width: size, height: size, borderRadius: size / 2, backgroundColor }]}>
+    <View style={[styles.avatar, { width: size, height: size, borderRadius: size / 2, backgroundColor: resolvedBackground }]}>
       {isImageUri ? (
         <Image source={{ uri: label }} style={[styles.image, { width: size, height: size, borderRadius: size / 2 }]} />
       ) : (
-        <Text style={[styles.label, isGraphicLabel && styles.graphicLabel, { fontSize: Math.max(13, size * (isGraphicLabel ? 0.5 : 0.34)) }]}>
+        <Text style={[
+          styles.label,
+          { color: isGraphicLabel ? theme.colors.text : theme.colors.primaryDeep, fontSize: Math.max(13, size * (isGraphicLabel ? 0.5 : 0.34)) }
+        ]}>
           {label}
         </Text>
       )}
@@ -34,11 +39,6 @@ const styles = StyleSheet.create({
     resizeMode: "cover"
   },
   label: {
-    color: colors.primaryDeep,
     fontWeight: "800"
-  },
-  graphicLabel: {
-    color: colors.text,
-    fontWeight: "400"
   }
 });

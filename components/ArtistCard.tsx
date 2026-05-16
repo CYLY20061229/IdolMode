@@ -1,6 +1,7 @@
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { Avatar } from "@/components/Avatar";
-import { colors, shadow } from "@/constants/theme";
+import { shadow } from "@/constants/theme";
+import { useAppTheme } from "@/context/AppThemeContext";
 import { Artist } from "@/types/idol";
 
 type ArtistCardProps = {
@@ -9,12 +10,17 @@ type ArtistCardProps = {
 };
 
 export default function ArtistCard({ artist, onPress }: ArtistCardProps) {
+  const theme = useAppTheme();
   return (
-    <Pressable onPress={onPress} style={({ pressed }) => [styles.card, pressed && styles.pressed]}>
+    <Pressable onPress={onPress} style={({ pressed }) => [
+      styles.card,
+      { backgroundColor: theme.colors.card },
+      pressed && styles.pressed
+    ]}>
       <Avatar label={artist.avatar} size={56} backgroundColor={artist.background} />
       <View style={styles.textWrap}>
-        <Text style={styles.name}>{artist.nickname}</Text>
-        <Text numberOfLines={2} style={styles.bio}>{artist.bio}</Text>
+        <Text style={[styles.name, { color: theme.colors.text }]}>{artist.nickname}</Text>
+        <Text numberOfLines={2} style={[styles.bio, { color: theme.colors.mutedText }]}>{artist.bio}</Text>
       </View>
     </Pressable>
   );
@@ -23,7 +29,6 @@ export default function ArtistCard({ artist, onPress }: ArtistCardProps) {
 const styles = StyleSheet.create({
   card: {
     ...shadow,
-    backgroundColor: colors.card,
     borderRadius: 24,
     flexDirection: "row",
     alignItems: "center",
@@ -38,12 +43,10 @@ const styles = StyleSheet.create({
     gap: 4
   },
   name: {
-    color: colors.text,
     fontSize: 17,
     fontWeight: "800"
   },
   bio: {
-    color: colors.mutedText,
     fontSize: 13,
     lineHeight: 18
   }

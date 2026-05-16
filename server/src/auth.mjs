@@ -1,4 +1,5 @@
 import crypto from "node:crypto";
+import jwt from "jsonwebtoken";
 import { query } from "./db.mjs";
 
 function hashToken(token) {
@@ -7,6 +8,13 @@ function hashToken(token) {
 
 export function createSessionToken() {
   return `idm_${crypto.randomBytes(32).toString("base64url")}`;
+}
+
+function jwtSecret() {
+  if (!process.env.JWT_SECRET) {
+    throw new Error("JWT_SECRET is required for email authentication.");
+  }
+  return process.env.JWT_SECRET;
 }
 
 export function getBearerToken(req) {
@@ -57,8 +65,48 @@ export async function revokeSession(sessionToken) {
   return result.rowCount > 0;
 }
 
+export function createJwtToken(userId) {
+  return jwt.sign(
+    {
+      sub: String(userId),
+      typ: "access"
+    },
+    jwtSecret(),
+    {
+      expiresIn: process.env.JWT_EXPIRES_IN || "180d",
+      issuer: process.env.JWT_ISSUER || "idol-mode-api"
+    }
+  );
+}
+
+export function verifyJwtUserId(token) {
+  if (!token || token.startsWith("idm_")) return "";
+  try {
+    const payload = jwt.verify(token, jwtSecret(), {
+      issuer: process.env.JWT_ISSUER || "idol-mode-api"
+    });
+    return typeof payload?.sub === "string" ? payload.sub : "";
+  } catch {
+    return "";
+  }
+}
+
+export async function revokeAllDeviceSessionsForUser(userId) {
+  if (!userId) return 0;
+  const result = await query(
+    `UPDATE device_sessions SET revoked_at = now()
+     WHERE user_id = $1 AND revoked_at IS NULL`,
+    [userId]
+  );
+  return result.rowCount;
+}
+
 export async function resolveUserId(req, body = {}) {
-  const sessionUserId = await getSessionUserId(getBearerToken(req));
+  const bearerToken = getBearerToken(req);
+  const jwtUserId = verifyJwtUserId(bearerToken);
+  if (jwtUserId) return jwtUserId;
+
+  const sessionUserId = await getSessionUserId(bearerToken);
   if (sessionUserId) return sessionUserId;
 
   if (process.env.ALLOW_INSECURE_USER_ID_HEADER === "false") {

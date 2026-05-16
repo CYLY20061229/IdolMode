@@ -1,6 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import { Pressable, StyleSheet, Text, View } from "react-native";
-import { colors } from "@/constants/theme";
+import { useAppTheme } from "@/context/AppThemeContext";
 
 type SettingsRowProps = {
   title: string;
@@ -12,25 +12,30 @@ type SettingsRowProps = {
 };
 
 export default function SettingsRow({ title, icon, value, onPress, danger, hideChevron }: SettingsRowProps) {
-  const titleColor = danger ? colors.danger : colors.text;
-  const iconColor = danger ? colors.danger : colors.primaryDeep;
+  const theme = useAppTheme();
+  const titleColor = danger ? theme.colors.danger : theme.colors.text;
+  const iconColor = danger ? theme.colors.danger : theme.colors.primaryDeep;
 
   return (
     <Pressable
-      style={({ pressed }) => [styles.row, pressed && styles.pressed]}
+      style={({ pressed }) => [
+        styles.row,
+        { backgroundColor: theme.colors.card, borderColor: theme.colors.border },
+        pressed && styles.pressed
+      ]}
       onPress={onPress}
       accessibilityRole="button"
       accessibilityLabel={title}
     >
-      <View style={[styles.iconWrap, danger && styles.iconWrapDanger]}>
+      <View style={[styles.iconWrap, { backgroundColor: danger ? `${theme.colors.danger}18` : theme.colors.background }]}>
         <Ionicons name={icon} size={18} color={iconColor} />
       </View>
       <Text style={[styles.title, { color: titleColor }]}>{title}</Text>
       {value ? (
-        <Text style={styles.value}>{value}</Text>
+        <Text style={[styles.value, { color: theme.colors.mutedText }]}>{value}</Text>
       ) : null}
       {!hideChevron && (
-        <Ionicons name="chevron-forward" size={18} color={danger ? colors.danger : colors.mutedText} />
+        <Ionicons name="chevron-forward" size={18} color={danger ? theme.colors.danger : theme.colors.mutedText} />
       )}
     </Pressable>
   );
@@ -38,10 +43,8 @@ export default function SettingsRow({ title, icon, value, onPress, danger, hideC
 
 const styles = StyleSheet.create({
   row: {
-    backgroundColor: colors.card,
     borderRadius: 22,
     borderWidth: 1,
-    borderColor: colors.border,
     padding: 15,
     flexDirection: "row",
     alignItems: "center",
@@ -54,12 +57,8 @@ const styles = StyleSheet.create({
     width: 34,
     height: 34,
     borderRadius: 17,
-    backgroundColor: colors.background,
     alignItems: "center",
     justifyContent: "center"
-  },
-  iconWrapDanger: {
-    backgroundColor: "#FFF0F2"
   },
   title: {
     flex: 1,
@@ -67,7 +66,6 @@ const styles = StyleSheet.create({
     fontWeight: "800"
   },
   value: {
-    color: colors.mutedText,
     fontSize: 14,
     fontWeight: "600"
   }

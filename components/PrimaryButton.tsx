@@ -1,5 +1,5 @@
 import { Pressable, StyleSheet, Text } from "react-native";
-import { colors } from "@/constants/theme";
+import { useAppTheme } from "@/context/AppThemeContext";
 
 type PrimaryButtonProps = {
   title: string;
@@ -9,9 +9,10 @@ type PrimaryButtonProps = {
 };
 
 export default function PrimaryButton({ title, onPress, disabled, variant = "primary" }: PrimaryButtonProps) {
+  const theme = useAppTheme();
   const backgroundColor =
-    variant === "danger" ? colors.danger : variant === "light" ? colors.secondary : colors.primary;
-  const textColor = variant === "light" ? colors.text : colors.card;
+    variant === "danger" ? theme.colors.danger : variant === "light" ? theme.colors.secondary : theme.colors.primary;
+  const textColor = variant === "light" ? theme.colors.text : theme.colors.card;
 
   return (
     <Pressable

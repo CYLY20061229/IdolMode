@@ -1,7 +1,20 @@
 import { createHmac, randomUUID } from "node:crypto";
 
-const allowedKinds = new Set(["avatar", "chat-image", "sticker", "profile-background"]);
-const allowedMimeTypes = new Set(["image/jpeg", "image/png", "image/webp", "image/gif"]);
+const allowedKinds = new Set(["avatar", "chat-image", "sticker", "profile-background", "voice"]);
+const allowedMimeTypes = new Set([
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "image/gif",
+  "audio/m4a",
+  "audio/mp4",
+  "audio/mpeg",
+  "audio/mp3",
+  "audio/wav",
+  "audio/webm",
+  "audio/aac",
+  "audio/x-m4a"
+]);
 
 function required(name) {
   const value = process.env[name];
@@ -17,6 +30,11 @@ function extensionForMime(mimeType) {
   if (mimeType === "image/png") return "png";
   if (mimeType === "image/webp") return "webp";
   if (mimeType === "image/gif") return "gif";
+  if (mimeType === "audio/webm") return "webm";
+  if (mimeType === "audio/mpeg" || mimeType === "audio/mp3") return "mp3";
+  if (mimeType === "audio/wav") return "wav";
+  if (mimeType === "audio/aac") return "aac";
+  if (mimeType === "audio/m4a" || mimeType === "audio/mp4" || mimeType === "audio/x-m4a") return "m4a";
   return "jpg";
 }
 
@@ -30,7 +48,8 @@ export function createOssPutSignature({ userId, kind, mimeType }) {
   const bucket = required("OSS_BUCKET");
   const endpoint = normalizeEndpoint(required("OSS_ENDPOINT"));
   const publicBaseUrl = (process.env.OSS_PUBLIC_BASE_URL || `https://${bucket}.${endpoint}`).replace(/\/$/, "");
-  const normalizedMimeType = allowedMimeTypes.has(mimeType) ? mimeType : "image/jpeg";
+  const fallbackMimeType = kind === "voice" ? "audio/m4a" : "image/jpeg";
+  const normalizedMimeType = allowedMimeTypes.has(mimeType) ? mimeType : fallbackMimeType;
   const normalizedKind = normalizeKind(kind);
   const expires = Math.floor(Date.now() / 1000) + Number(process.env.OSS_SIGN_EXPIRES_SECONDS || 600);
   const ext = extensionForMime(normalizedMimeType);

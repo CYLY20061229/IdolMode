@@ -3,6 +3,7 @@ import { Alert, Platform, StyleSheet, Text, View } from "react-native";
 import { router, useLocalSearchParams } from "expo-router";
 import { Audio } from "expo-av";
 import ChatBubble from "@/components/ChatBubble";
+import PollCard from "@/components/PollCard";
 import IconButton from "@/components/IconButton";
 import PrimaryButton from "@/components/PrimaryButton";
 import { colors, spacing } from "@/constants/theme";
@@ -95,14 +96,20 @@ export default function ConfirmSendScreen() {
         {/* 模拟聊天界面：深色背景 + 消息气泡 */}
         <View style={styles.chatMock}>
           <Text style={styles.chatName}>{myProfile.nickname}</Text>
-          <ChatBubble
-            text={message?.text ?? "消息不存在。"}
-            side="left"
-            time={message?.createdAt}
-            attachmentType={message?.attachmentType}
-            attachmentUri={message?.attachmentUri}
-            quotedFanMessage={message?.quotedFanMessage}
-          />
+          {message?.type === "poll" && message.poll ? (
+            <PollCard poll={message.poll} />
+          ) : (
+            <ChatBubble
+              text={message?.text ?? "消息不存在。"}
+              side="left"
+              time={message?.createdAt}
+              attachmentType={message?.attachmentType}
+              attachmentUri={message?.attachmentUri}
+              audioDurationMs={message?.audioDurationMs}
+              recognizedText={message?.recognizedText}
+              quotedFanMessage={message?.quotedFanMessage}
+            />
+          )}
         </View>
       </View>
 

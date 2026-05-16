@@ -10,13 +10,35 @@ export type Profile = {
   backgroundImage?: string;
   /** 状态文字，显示在签名下方 */
   statusText?: string;
+  /** 粉丝名，用户给粉丝群体起的名字 */
+  fanName?: string | null;
 };
 
-export type ChatAttachmentType = "background" | "sticker";
+export type ChatAttachmentType = "background" | "sticker" | "voice";
 
 export type QuotedFanMessage = {
   id: string;
   content: string;
+};
+
+export type PollOption = {
+  id: string;
+  text: string;
+  voteCount: number;
+  percentage: number;
+};
+
+export type Poll = {
+  id: string;
+  question: string;
+  options: PollOption[];
+  status: "active" | "closed";
+  createdAt: string;
+  closesAt: string;
+  totalVotes: number;
+  winningOptionId: string;
+  liveStartedAt?: string;
+  messageKind: "poll";
 };
 
 export type Artist = {
@@ -34,11 +56,16 @@ export type Artist = {
 export type ChatMessage = {
   id: string;
   sender: "self" | "artist" | "fan" | "user";
+  type?: "text" | "poll";
   text: string;
   status?: "draft" | "pending" | "sent";
   createdAt: string;
+  poll?: Poll;
   attachmentType?: ChatAttachmentType;
   attachmentUri?: string;
+  audioDurationMs?: number;
+  recognizedText?: string;
+  imageCaption?: string;
   quotedFanMessage?: QuotedFanMessage;
 };
 
@@ -94,4 +121,9 @@ export type IdolGrowthStats = {
   unlockedAchievements: string[];
   /** 已解锁粉丝人格（预留） */
   unlockedPersonas: string[];
+};
+
+export type UserPreferences = {
+  fanNotificationsEnabled: boolean;
+  autoTranslateEnabled: boolean;
 };

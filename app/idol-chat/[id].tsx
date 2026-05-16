@@ -1,6 +1,7 @@
-import { useRef, useState } from "react";
-import { Alert, Image, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { useCallback, useRef, useState } from "react";
+import { Alert, Image, InteractionManager, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { useFocusEffect } from "@react-navigation/native";
 import { router, useLocalSearchParams } from "expo-router";
 import { Avatar } from "@/components/Avatar";
 import ChatBubble from "@/components/ChatBubble";
@@ -23,13 +24,63 @@ function uploadErrorMessage(error: unknown): string {
 
 export default function IdolChatScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { idolThreads, sendIdolChatMessage, recommendedArtists, stickerUris, addSticker } = useIdolMode();
+  const { idolThreads, sendIdolChatMessage, receiveArtistBubbleMessage, recommendedArtists, stickerUris, addSticker } = useIdolMode();
   const [text, setText] = useState("");
   const [showStickers, setShowStickers] = useState(false);
   const [imageUpload, setImageUpload] = useState<ImageUploadState>({ status: "idle" });
   const uploadRunId = useRef(0);
+  const scrollRef = useRef<ScrollView>(null);
+  const autoScrollUntil = useRef(0);
   const artist = recommendedArtists.find((item) => item.id === id) ?? recommendedArtists[0];
   const thread = idolThreads.find((item) => item.artistId === artist.id);
+  const threadMessageCount = thread?.messages.length ?? 0;
+
+  const scrollToLatest = useCallback((animated = false) => {
+    requestAnimationFrame(() => {
+      scrollRef.current?.scrollToEnd({ animated });
+    });
+    setTimeout(() => {
+      scrollRef.current?.scrollToEnd({ animated });
+    }, 120);
+  }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      autoScrollUntil.current = Date.now() + 1800;
+      const task = InteractionManager.runAfterInteractions(() => {
+        scrollToLatest(false);
+      });
+      const timers = [80, 260, 650, 1200].map((delay) =>
+        setTimeout(() => scrollToLatest(false), delay)
+      );
+
+      return () => {
+        autoScrollUntil.current = 0;
+        task.cancel();
+        timers.forEach(clearTimeout);
+      };
+    }, [artist.id, scrollToLatest])
+  );
+
+  useFocusEffect(
+    useCallback(() => {
+      const initialTimer = setTimeout(() => {
+        if (threadMessageCount === 0) {
+          receiveArtistBubbleMessage(artist.id);
+        }
+      }, 450);
+      const interval = setInterval(() => {
+        if (Math.random() < 0.42) {
+          receiveArtistBubbleMessage(artist.id);
+        }
+      }, 26000);
+
+      return () => {
+        clearTimeout(initialTimer);
+        clearInterval(interval);
+      };
+    }, [artist.id, receiveArtistBubbleMessage, threadMessageCount])
+  );
 
   const send = () => {
     const trimmed = text.trim();
@@ -100,7 +151,16 @@ export default function IdolChatScreen() {
         <View style={styles.spacer} />
       </View>
 
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.messages}>
+      <ScrollView
+        ref={scrollRef}
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.messages}
+        onContentSizeChange={() => {
+          if (Date.now() <= autoScrollUntil.current) {
+            scrollToLatest(false);
+          }
+        }}
+      >
         {(thread?.messages ?? []).map((message) => (
           <ChatBubble
             key={message.id}

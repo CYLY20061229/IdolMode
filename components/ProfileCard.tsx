@@ -1,6 +1,7 @@
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { Avatar } from "@/components/Avatar";
-import { colors, shadow } from "@/constants/theme";
+import { shadow } from "@/constants/theme";
+import { useAppTheme } from "@/context/AppThemeContext";
 import { Profile } from "@/types/idol";
 
 type ProfileCardProps = {
@@ -9,12 +10,17 @@ type ProfileCardProps = {
 };
 
 export default function ProfileCard({ profile, onPress }: ProfileCardProps) {
+  const theme = useAppTheme();
   return (
-    <Pressable onPress={onPress} style={({ pressed }) => [styles.card, pressed && styles.pressed]}>
+    <Pressable onPress={onPress} style={({ pressed }) => [
+      styles.card,
+      { backgroundColor: theme.colors.card },
+      pressed && styles.pressed
+    ]}>
       <Avatar label={profile.avatar} size={62} />
       <View style={styles.textWrap}>
-        <Text style={styles.name}>{profile.nickname}</Text>
-        <Text numberOfLines={2} style={styles.signature}>{profile.signature}</Text>
+        <Text style={[styles.name, { color: theme.colors.text }]}>{profile.nickname}</Text>
+        <Text numberOfLines={2} style={[styles.signature, { color: theme.colors.mutedText }]}>{profile.signature}</Text>
       </View>
     </Pressable>
   );
@@ -23,7 +29,6 @@ export default function ProfileCard({ profile, onPress }: ProfileCardProps) {
 const styles = StyleSheet.create({
   card: {
     ...shadow,
-    backgroundColor: colors.card,
     borderRadius: 28,
     flexDirection: "row",
     gap: 14,
@@ -38,12 +43,10 @@ const styles = StyleSheet.create({
     gap: 5
   },
   name: {
-    color: colors.text,
     fontSize: 18,
     fontWeight: "800"
   },
   signature: {
-    color: colors.mutedText,
     fontSize: 13,
     lineHeight: 18
   }

@@ -23,6 +23,11 @@ import {
 } from "./fanPersonas.mjs";
 import { generateLiveFanMessages } from "./aiClient.mjs";
 import { logAiFailure } from "./logger.mjs";
+import {
+  isMessageAllowedForTime,
+  preferredPersonaTypesForTime,
+  resolveTimeContext
+} from "./timeContext.mjs";
 
 // ── 常量 ──────────────────────────────────────────────────────────────────────
 
@@ -62,9 +67,17 @@ function pickLanguage() {
 }
 
 /** 从 fanPersonas 里随机选一个支持该语言的 persona */
-function pickPersonaForLanguage(language) {
+function pickPersonaForLanguage(language, timeContext = {}) {
+  const preferredTypes = preferredPersonaTypesForTime(timeContext);
+  const preferred = fanPersonas.filter(
+    (p) => preferredTypes.includes(p.type) && (!p.languages || p.languages.includes(language))
+  );
+  if (preferred.length && Math.random() < 0.45) return pickRandom(preferred);
+
   const compatible = fanPersonas.filter(
-    (p) => !p.languages || p.languages.includes(language)
+    (p) =>
+      (!p.languages || p.languages.includes(language)) &&
+      p.type !== "late night fan"
   );
   return pickRandom(compatible.length ? compatible : fanPersonas);
 }
@@ -125,8 +138,6 @@ const templatesByLanguage = {
   "记得穿外套，最近真的降温了",
   "你是不是又熬夜了",
   "姐姐你眼睛下面黑眼圈是不是又重了",
-  "不许熬夜，听到没有",
-  "营业可以不营业，觉必须睡",
   "宝宝你要好好照顾自己，别让我操心",
   "你可以不回我，但你必须好好吃饭",
   "宝宝妈妈给你把水壶装好了，记得慢慢喝，别一口闷，太烫了先晾一晾，出门别忘了带纸巾和充电宝，今天如果很累就早点回来休息，不要逞强，妈妈会在这里等你下班",
@@ -291,8 +302,9 @@ const templatesByLanguage = {
   "我知道你很敏感，我在物料里察觉到了，不要委屈自己了，你不需要照顾所有人的情绪",  "你很敏感，我察觉到了，不要委屈自己，你不需要一直看眼色","走到今天很辛苦吧宝宝，我会帮你治愈一切，我爱你",
   "你好像hot nerd呀宝宝","宝宝你是少女暴君！！","千万不要叫自己欧巴好不好，，，看到别的女豆说什么欧巴病给我看si乐",
   "女人中的女人。。。好性感","     姐姐你真的好性感啊啊啊啊","姐姐你是我见过最性感的女人了",
-  "不再姐姐算长大吗",
-  "不再姐姐算长大吗",
+  "不再依赖姐姐算长大吗",
+  "不再依赖姐姐算长大吗",
+  "不再依赖姐姐算长大吗","不再依赖姐姐算长大吗","不再依赖姐姐算长大吗","不再依赖姐姐算长大吗"
 
   ],
   en: [
@@ -380,17 +392,165 @@ const templatesByLanguage = {
   ]
 };
 
-/** 生成一条模板 ambient 消息（不调 AI） */
-function makeTemplateMessage() {
-  const language = pickLanguage();
+const ambientTemplateTranslations = {
+  en: {
+    "just checking in on you": "只是来看看你。",
+    "came to see if you posted anything": "来看看你有没有发什么。",
+    "hi, just passing by": "嗨，只是路过看看。",
+    "thinking of you today": "今天也在想你。",
+    "came to say hi": "来跟你说声嗨。",
+    "just wanted to see your face": "只是想看看你的脸。",
+    "here again, as always": "又来了，和往常一样。",
+    "couldn't sleep, came to check": "睡不着，所以来看看。",
+    "just got off work, came here first": "刚下班，第一件事就是来这里。",
+    "hi, I'm here": "嗨，我来了。",
+    "came to see you again": "又来看你了。",
+    "just wanted to say I'm here": "只是想说我在这里。",
+    "here for my daily dose of you": "来补充今天份的你。",
+    "came to check on you": "来看看你还好吗。",
+    "just passing by to say hi": "只是路过跟你打个招呼。",
+    "here again, couldn't stay away": "又来了，还是忍不住。",
+    "just wanted to see you": "只是想见你。",
+    "came to say I miss you": "来告诉你我想你了。",
+    "here for my daily visit": "来进行今天的日常探访。",
+    "just checking in": "只是来报个到。",
+    "came to see if you're okay": "来看看你是不是还好。",
+    "came to see you": "来看你了。",
+    "just passing by": "只是路过一下。",
+    "here for my daily check": "来完成今天的打卡。",
+    "came to say I'm here": "来告诉你我在。",
+    "just wanted to see you again": "只是又想见你了。",
+    "here again, couldn't resist": "又来了，真的忍不住。",
+    "came to check on you today": "今天也来看看你。"
+  },
+  ko: {
+    "오늘도 왔어요": "今天也来了。",
+    "잠깐 들렀어요": "只是短暂来看看。",
+    "퇴근하고 바로 왔어요": "下班后马上就来了。",
+    "오늘도 보고 싶었어요": "今天也很想你。",
+    "안녕하세요, 왔어요": "你好，我来了。",
+    "오늘도 여기 있어요": "今天也在这里。",
+    "매일 오는 거 알아요?": "你知道我每天都来吗？",
+    "오늘도 잊지 않았어요": "今天也没有忘记你。",
+    "잠깐 들러서 인사해요": "路过一下来打个招呼。",
+    "오늘도 좋아해요": "今天也喜欢你。",
+    "왔어요, 오늘도 왔어요": "来了，今天也来了。",
+    "보고 싶어서 왔어요": "因为想你所以来了。",
+    "오늘도 여기 있을게요": "今天也会在这里。",
+    "매일 오는 팬이에요": "我是每天都会来的粉丝。",
+    "오늘도 응원해요": "今天也为你加油。"
+  },
+  jp: {
+    "今日も来たよ": "今天也来了。",
+    "ちょっと寄ってみた": "稍微过来看看。",
+    "仕事終わって来たよ": "下班后就来了。",
+    "今日も会いたかった": "今天也很想见你。",
+    "こんにちは、来たよ": "你好，我来了。",
+    "今日もここにいるよ": "今天也在这里。",
+    "毎日来てるの知ってる？": "你知道我每天都来吗？",
+    "今日も忘れてないよ": "今天也没有忘记你。",
+    "ちょっと挨拶しに来た": "只是来打个招呼。",
+    "今日も好きだよ": "今天也喜欢你。",
+    "来たよ、今日も来たよ": "来了，今天也来了。",
+    "会いたくて来た": "因为想见你所以来了。",
+    "今日もここにいるね": "今天也会在这里。",
+    "毎日来てるファンだよ": "我是每天都会来的粉丝。",
+    "今日も応援してるよ": "今天也支持你。"
+  },
+  es: {
+    "aquí de nuevo": "又来这里了。",
+    "solo pasaba a saludar": "只是路过来打个招呼。",
+    "vine a verte": "我来看你了。",
+    "hoy también vine": "今天也来了。",
+    "aquí estoy, como siempre": "我在这里，和往常一样。",
+    "vine a ver si publicaste algo": "来看看你有没有发什么。",
+    "solo quería decir hola": "只是想说声你好。",
+    "aquí para mi visita diaria": "来进行今天的日常探访。",
+    "vine a saludarte": "来跟你打招呼。",
+    "aquí de nuevo, no puedo evitarlo": "又来了，真的忍不住。",
+    "vine a verte otra vez": "又来看你了。",
+    "solo quería decir que estoy aquí": "只是想告诉你我在这里。",
+    "aquí para mi dosis diaria": "来补充今天份的你。",
+    "vine a ver cómo estás": "来看看你怎么样。",
+    "solo pasando a decir hola": "只是路过说声你好。"
+  }
+};
+
+const timeTemplatesByPeriod = {
+  breakfast: [
+    "早八路上来看看你，顺便问你吃早饭了吗",
+    "我在买早餐，你也要好好吃第一口饭",
+    "刚醒就来看你了，今天也要顺利出门",
+    "通勤路上看到通知会开心一整天",
+    "早八人已到教室，靠你续命一下"
+  ],
+  lunch: [
+    "午饭吃了吗宝宝，不许随便糊弄",
+    "我午休偷看一眼，你也要好好吃饭",
+    "食堂今天一般，但想到你就开心一点",
+    "外卖到了，我来问问你吃没吃午饭",
+    "午间报到，今天也要把饭吃完"
+  ],
+  dinner: [
+    "晚饭吃了吗，今天累不累",
+    "刚下班来看看你，你也要吃点热的",
+    "放学了，第一件事就是来这里报到",
+    "傍晚了，记得吃晚饭不要空着肚子练习",
+    "今天也辛苦了，晚饭要认真吃"
+  ],
+  late_night: [
+    "睡不着，来看看你有没有发消息。",
+    "今天终于结束了，来找你说晚安。",
+    "深夜了，想你了。",
+    "睡前来看你一眼，晚安。"
+  ]
+};
+
+function templateTranslationFor(language, content) {
+  if (language === "zh") return content;
+  return ambientTemplateTranslations[language]?.[content] || content;
+}
+
+/**
+ * 从 DB row 映射消息时，检查外文消息是否有有效中文译文。
+ * 若无（translated_content 为空、等于原文、或不含中文），把 language 降级为 "zh"，
+ * 避免前端显示"暂无译文"。
+ */
+function normalizeDbRow(row) {
+  const language = row.language || "zh";
+  const content = row.content || "";
+  const rawTranslated = (row.translated_content || "").trim();
+
+  return {
+    language,
+    content,
+    translatedContent: rawTranslated || content,
+    personaType: row.persona_type || undefined,
+    messageKind: row.message_kind || "ambient"
+  };
+}
+
+function pickTemplateContent(language, timeContext = {}) {
+  const { period } = resolveTimeContext(timeContext);
+  const timeTemplates = timeTemplatesByPeriod[period] || [];
+  if (timeTemplates.length && Math.random() < 0.42) {
+    return { language: "zh", content: pickRandom(timeTemplates) };
+  }
+
   const templates = templatesByLanguage[language] || templatesByLanguage.zh;
-  const content = pickRandom(templates);
-  const persona = pickPersonaForLanguage(language);
+  return { language, content: pickRandom(templates) };
+}
+
+/** 生成一条模板 ambient 消息（不调 AI） */
+function makeTemplateMessage(timeContext = {}) {
+  const picked = pickTemplateContent(pickLanguage(), timeContext);
+  const language = picked.language;
+  const content = picked.content;
+  const persona = pickPersonaForLanguage(language, timeContext);
   const fanName = pickRandom(fanNicknamePool);
   const avatar = pickRandom(animalAvatars);
 
-  // 简单的中文翻译映射（仅对非中文消息）
-  const translatedContent = language === "zh" ? content : content;
+  const translatedContent = templateTranslationFor(language, content);
 
   return {
     language,
@@ -405,8 +565,16 @@ function makeTemplateMessage() {
 }
 
 /** 批量生成模板消息 */
-function makeTemplateMessages(count) {
-  return Array.from({ length: count }, makeTemplateMessage);
+function makeTemplateMessages(count, timeContext = {}) {
+  const messages = [];
+  const maxAttempts = Math.max(count * 4, 20);
+  for (let i = 0; messages.length < count && i < maxAttempts; i++) {
+    const message = makeTemplateMessage(timeContext);
+    if (isMessageAllowedForTime(message, timeContext)) {
+      messages.push(message);
+    }
+  }
+  return messages;
 }
 
 // ── PostgreSQL CRUD ────────────────────────────────────────────────────────────
@@ -415,7 +583,7 @@ function makeTemplateMessages(count) {
  * 从 PG 拉取 count 条 ambient 消息（近似随机，不用 ORDER BY RANDOM()）
  * 拉取后更新 used_count 和 random_key（让下次查询结果不同）
  */
-async function fetchFromPg(count) {
+async function fetchFromPg(count, timeContext = {}) {
   const safeCount = Math.max(1, Math.min(count, 100));
 
   // 用 random_key 做近似随机：每次取一个随机起点，然后顺序读
@@ -450,7 +618,15 @@ async function fetchFromPg(count) {
     const j = Math.floor(Math.random() * (i + 1));
     [rows[i], rows[j]] = [rows[j], rows[i]];
   }
-  const picked = rows.slice(0, safeCount);
+  const picked = rows
+    .filter((row) => isMessageAllowedForTime({
+      content: row.content,
+      translatedContent: row.translated_content,
+      personaType: row.persona_type
+    }, timeContext))
+    .slice(0, safeCount);
+
+  if (picked.length === 0) return [];
 
   // 异步更新使用统计 + 重新随机化 random_key（不阻塞响应）
   const ids = picked.map((r) => r.id);
@@ -463,13 +639,7 @@ async function fetchFromPg(count) {
     [ids, Date.now()]
   ).catch(() => {/* 统计失败不影响主流程 */});
 
-  return picked.map((row) => ({
-    language: row.language,
-    content: row.content,
-    translatedContent: row.translated_content || row.content,
-    personaType: row.persona_type || undefined,
-    messageKind: row.message_kind || "ambient"
-  }));
+  return picked.map((row) => normalizeDbRow(row));
 }
 
 /** 获取 PG 当前库存数量 */
@@ -516,7 +686,7 @@ async function insertAmbientMessages(messages) {
  *   - 80% 模板 + 20% AI
  *   - 用 refillLock 防止同一进程并发 refill
  */
-async function triggerRefill() {
+async function triggerRefill(timeContext = {}) {
   if (refillLock) return;
   if (!isDbEnabled()) return;
 
@@ -534,12 +704,12 @@ async function triggerRefill() {
     const templateCount = needed - aiCount;
 
     // 1. 模板消息（同步生成，立即写入）
-    const templateMessages = makeTemplateMessages(templateCount);
+    const templateMessages = makeTemplateMessages(templateCount, timeContext);
     await insertAmbientMessages(templateMessages.map((m) => ({ ...m, source: "template" })));
 
     // 2. AI 消息（分批异步生成，不阻塞）
     if (aiCount > 0) {
-      void generateAiAmbientMessages(aiCount);
+      void generateAiAmbientMessages(aiCount, timeContext);
     }
   } catch (error) {
     logAiFailure({
@@ -552,12 +722,12 @@ async function triggerRefill() {
 }
 
 /** 分批调用 AI 生成 ambient 消息并写入 PG */
-async function generateAiAmbientMessages(totalCount) {
+async function generateAiAmbientMessages(totalCount, timeContext = {}) {
   const batches = Math.ceil(totalCount / AI_BATCH_SIZE);
   for (let i = 0; i < batches; i++) {
     try {
       const batchCount = Math.min(AI_BATCH_SIZE, totalCount - i * AI_BATCH_SIZE);
-      const messages = await generateLiveFanMessages("", batchCount);
+      const messages = await generateLiveFanMessages("", batchCount, timeContext);
       const toInsert = messages.map((m) => ({ ...m, source: "ai" }));
       await insertAmbientMessages(toInsert);
     } catch (error) {
@@ -578,20 +748,23 @@ async function generateAiAmbientMessages(totalCount) {
  * 优先级：内存缓冲 → PG → 模板 fallback
  * 同时异步触发 refill（不阻塞响应）
  */
-export async function getAmbientMessages(count = 30) {
+export async function getAmbientMessages(count = 30, timeContext = {}) {
   const safeCount = Math.max(1, Math.min(count, 60));
   const result = [];
 
   // 1. 先从内存缓冲取
   while (result.length < safeCount && memoryBuffer.length > 0) {
-    result.push(memoryBuffer.shift());
+    const next = memoryBuffer.shift();
+    if (isMessageAllowedForTime(next, timeContext)) {
+      result.push(next);
+    }
   }
 
   // 2. 不够时从 PG 补
   if (result.length < safeCount && isDbEnabled()) {
     try {
       const needed = safeCount - result.length;
-      const pgMessages = await fetchFromPg(needed + BATCH_FETCH_SIZE); // 多取一些补充内存缓冲
+      const pgMessages = await fetchFromPg(needed + BATCH_FETCH_SIZE, timeContext); // 多取一些补充内存缓冲
       const forResult = pgMessages.slice(0, needed);
       const forBuffer = pgMessages.slice(needed);
 
@@ -613,25 +786,34 @@ export async function getAmbientMessages(count = 30) {
   // 3. 还不够时用模板 fallback 补齐
   if (result.length < safeCount) {
     const fallbackCount = safeCount - result.length;
-    const fallbackMessages = makeTemplateMessages(fallbackCount);
+    const fallbackMessages = makeTemplateMessages(fallbackCount, timeContext);
     result.push(...fallbackMessages);
   }
 
   // 4. 异步触发 refill（不等待）
-  void triggerRefill();
+  void triggerRefill(timeContext);
 
   // 5. 给每条消息加上运行时 id、fanName、avatar（PG 里不存这些，避免重复）
   const stamp = Date.now();
-  return result.map((msg, index) => ({
-    id: `ambient-pool-${stamp}-${index}`,
-    fanName: msg.fanName || pickRandom(fanNicknamePool),
-    avatar: msg.avatar || pickRandom(animalAvatars),
-    language: msg.language || "zh",
-    content: msg.content,
-    translatedContent: msg.translatedContent || msg.content,
-    personaType: msg.personaType,
-    messageKind: msg.messageKind || "ambient"
-  }));
+  return result.map((msg, index) => {
+    const language = msg.language || "zh";
+    const content = msg.content || "";
+    const rawTranslated = (msg.translatedContent || "").trim();
+    const hasChinese = /[\u3400-\u9FFF]/.test(rawTranslated);
+    const hasValidTranslation = language !== "zh"
+      ? Boolean(rawTranslated && rawTranslated !== content && hasChinese)
+      : true;
+return {
+  id: `ambient-pool-${stamp}-${index}`,
+  fanName: msg.fanName || pickRandom(fanNicknamePool),
+  avatar: msg.avatar || pickRandom(animalAvatars),
+  language,
+  content,
+  translatedContent: rawTranslated || content,
+  personaType: msg.personaType,
+  messageKind: msg.messageKind || "ambient"
+};
+  });
 }
 
 /**

@@ -17,6 +17,7 @@ export default function ProfileSetup() {
   const [gender, setGender] = useState<Profile["gender"]>(myProfile.gender || "female");
   const [ageText, setAgeText] = useState(myProfile.age ? String(myProfile.age) : "");
   const [nickname, setNickname] = useState(myProfile.nickname === "New Idol" || myProfile.nickname === "新艺人" ? "" : myProfile.nickname);
+  const [fanName, setFanName] = useState(myProfile.fanName || "");
 
   const age = Number(ageText);
   const validAge = Number.isInteger(age) && age >= 13 && age <= 120;
@@ -25,12 +26,22 @@ export default function ProfileSetup() {
   const submit = () => {
     if (!canContinue) return;
     const nextNickname = nickname.trim() || (myProfile.nickname === "New Idol" ? "新艺人" : myProfile.nickname) || "新艺人";
+    // Clean fanName: strip @ prefix, trim, no newlines, max 24 chars
+    let cleanFanName: string | null = null;
+    const rawFanName = fanName.replace(/[\r\n]/g, "");
+    if (rawFanName.trim().length > 0) {
+      const cleaned = rawFanName.trim().replace(/^@+/, "").replace(/\s+/g, " ").trim();
+      if (cleaned.length > 0) {
+        cleanFanName = cleaned.slice(0, 24);
+      }
+    }
     updateProfile({
       ...myProfile,
       nickname: nextNickname,
       avatar: nextNickname.slice(0, 2).toUpperCase(),
       gender,
-      age
+      age,
+      fanName: cleanFanName
     }).catch(() => {
       // Keep the setup screen open; profile save errors are surfaced in full edit screens.
     });
@@ -40,8 +51,8 @@ export default function ProfileSetup() {
     <View style={styles.screen}>
       <View style={styles.panel}>
         <Text style={styles.eyebrow}>Idol Mode</Text>
-        <Text style={styles.title}>完善你的 bubble 资料</Text>
-        <Text style={styles.copy}>这会帮助我们调整粉丝消息的语气，也会把你的账号保存在这台设备上。</Text>
+        <Text style={styles.title}>完善你的资料</Text>
+        <Text style={styles.copy}>这会把你的账号保存在这台设备上。</Text>
 
         <View style={styles.field}>
           <Text style={styles.label}>昵称</Text>
@@ -83,6 +94,22 @@ export default function ProfileSetup() {
             style={styles.input}
           />
           {ageText.length > 0 && !validAge ? <Text style={styles.hint}>年龄需要在 13 到 120 岁之间。</Text> : null}
+        </View>
+
+        <View style={styles.field}>
+          <Text style={styles.label}>粉丝名（选填）</Text>
+          <TextInput
+            value={fanName}
+            onChangeText={(text) => {
+              const cleaned = text.replace(/[\r\n]/g, "").slice(0, 24);
+              setFanName(cleaned);
+            }}
+            placeholder="给你的粉丝起个名字"
+            placeholderTextColor={colors.mutedText}
+            style={styles.input}
+            maxLength={24}
+            returnKeyType="done"
+          />
         </View>
 
         <PrimaryButton title="继续" onPress={submit} disabled={!canContinue} />

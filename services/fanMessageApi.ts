@@ -4,6 +4,7 @@ import {
   generateLiveFanMessage as generateMockLiveFanMessage
 } from "@/services/mockData";
 import { apiFetch } from "@/services/apiClient";
+import { getFanMessageTimeContext } from "@/services/timeContext";
 
 const apiBaseUrl = process.env.EXPO_PUBLIC_IDOL_MODE_API_URL?.replace(/\/$/, "");
 
@@ -12,6 +13,14 @@ type FanMessageResponse = {
   fanMessage?: FanMessage;
   status?: "processing";
   retryAfterMs?: number;
+};
+
+type AudioReactionResponse = FanMessageResponse & {
+  recognizedText?: string;
+};
+
+type ImageCaptionResponse = {
+  imageCaption?: string;
 };
 
 function withTimeout(ms: number) {
@@ -24,13 +33,19 @@ function withTimeout(ms: number) {
 }
 
 function normalizeFanMessage(message: FanMessage, fallbackId: string): FanMessage {
+  const language = message.language || "zh";
+  const content = message.content || "来了来了。";
+  const rawTranslatedContent = message.translatedContent?.trim();
+  const translatedContent = rawTranslatedContent && !(language !== "zh" && rawTranslatedContent === content)
+    ? rawTranslatedContent
+    : content;
   return {
     id: message.id || fallbackId,
     fanName: message.fanName || "fan",
     avatar: message.avatar || "🐰",
-    language: message.language || "zh",
-    content: message.content || "来了来了。",
-    translatedContent: message.translatedContent || message.content || "来了来了。",
+    language,
+    content,
+    translatedContent,
     fromMessageId: message.fromMessageId,
     personaType: message.personaType,
     messageKind: message.messageKind
@@ -60,7 +75,11 @@ async function postToApi(path: string, body: object): Promise<FanMessageResponse
 
 export async function generateFanMessagesAfterSend(message: string): Promise<FanMessage[]> {
   try {
-    const data = await postToApi("/ai/fan-messages", { message, count: 4 });
+    const data = await postToApi("/ai/fan-messages", {
+      message,
+      count: 4,
+      timeContext: getFanMessageTimeContext()
+    });
     const fanMessages = data?.fanMessages;
     if (fanMessages?.length) {
       return fanMessages.map((item, index) => normalizeFanMessage(item, `api-generated-${Date.now()}-${index}`));
@@ -74,7 +93,12 @@ export async function generateFanMessagesAfterSend(message: string): Promise<Fan
 
 export async function generateFanMessagesAfterSendForMessage(message: string, sourceMessageId: string): Promise<FanMessage[]> {
   try {
-    const data = await postToApi("/ai/fan-messages", { message, sourceMessageId, count: 4 });
+    const data = await postToApi("/ai/fan-messages", {
+      message,
+      sourceMessageId,
+      count: 4,
+      timeContext: getFanMessageTimeContext()
+    });
     const fanMessages = data?.fanMessages;
     if (fanMessages?.length) {
       return fanMessages.map((item, index) => normalizeFanMessage(item, `api-generated-${Date.now()}-${index}`));
@@ -95,7 +119,9 @@ async function requestReactionBurst(
     message: string;
     sourceMessageId: string;
     count: number;
+    timeContext?: ReturnType<typeof getFanMessageTimeContext>;
     quotedContent?: string;
+    imageCaption?: string;
   },
   signal: AbortSignal,
   attemptsLeft: number
@@ -132,7 +158,8 @@ export async function generateReactionBurst(
   message: string,
   sourceMessageId: string,
   count = 32,
-  quotedContent?: string
+  quotedContent?: string,
+  imageCaption?: string
 ): Promise<FanMessage[]> {
   const stamp = Date.now();
   if (!apiBaseUrl) {
@@ -148,7 +175,9 @@ export async function generateReactionBurst(
       message,
       sourceMessageId,
       count,
-      ...(quotedContent ? { quotedContent } : {})
+      timeContext: getFanMessageTimeContext(),
+      ...(quotedContent ? { quotedContent } : {}),
+      ...(imageCaption ? { imageCaption } : {})
     }, timeout.signal, 2);
 
     const msgs = data?.fanMessages ?? [];
@@ -167,9 +196,111 @@ export async function generateReactionBurst(
   return [];
 }
 
+export async function generateReactionBurstFromAudio(params: {
+  audioBase64?: string;
+  audioUrl?: string;
+  mimeType: string;
+  filename: string;
+  durationMs?: number;
+  sourceMessageId: string;
+  count?: number;
+  quotedContent?: string;
+  imageCaption?: string;
+}): Promise<{ recognizedText: string; fanMessages: FanMessage[] }> {
+  const stamp = Date.now();
+  if (!apiBaseUrl) {
+    throw new Error("Reaction burst API URL is not configured. Set EXPO_PUBLIC_IDOL_MODE_API_URL and restart Expo.");
+  }
+
+  const timeout = withTimeout(85_000);
+  try {
+    const response = await apiFetch("/api/voice/transcribe", {
+      method: "POST",
+      body: JSON.stringify({
+        ...params,
+        count: params.count ?? 40,
+        timeContext: getFanMessageTimeContext()
+      }),
+      signal: timeout.signal
+    });
+    const data = (await response.json().catch(() => ({}))) as AudioReactionResponse;
+    if (!response.ok) {
+      const message = (data as { message?: string; error?: string }).message || (data as { error?: string }).error;
+      throw new Error(message || `语音识别失败：${response.status}`);
+    }
+    const recognizedText = data.recognizedText?.trim();
+    if (!recognizedText) {
+      throw new Error("语音识别结果为空，请重试。");
+    }
+    return {
+      recognizedText,
+      fanMessages: (data.fanMessages ?? []).map((item, index) =>
+        normalizeFanMessage(item, `voice-reaction-${stamp}-${index}`)
+      )
+    };
+  } finally {
+    timeout.cancel();
+  }
+}
+
+export async function transcribeVoiceMessage(params: {
+  audioUrl?: string;
+  audioBase64?: string;
+  mimeType: string;
+  filename: string;
+  durationMs?: number;
+  sourceMessageId: string;
+  quotedContent?: string;
+  imageCaption?: string;
+}): Promise<string> {
+  if (!apiBaseUrl) {
+    throw new Error("Voice transcription API URL is not configured. Set EXPO_PUBLIC_IDOL_MODE_API_URL and restart Expo.");
+  }
+
+  const timeout = withTimeout(45_000);
+  try {
+    const response = await apiFetch("/api/voice/transcribe", {
+      method: "POST",
+      body: JSON.stringify({
+        ...params,
+        count: 0,
+        skipFanMessages: true,
+        timeContext: getFanMessageTimeContext()
+      }),
+      signal: timeout.signal
+    });
+    const data = (await response.json().catch(() => ({}))) as AudioReactionResponse;
+    if (!response.ok) {
+      const message = (data as { message?: string; error?: string }).message || (data as { error?: string }).error;
+      throw new Error(message || `语音识别失败：${response.status}`);
+    }
+    const recognizedText = data.recognizedText?.trim();
+    if (!recognizedText) {
+      throw new Error("语音识别结果为空，请重试。");
+    }
+    return recognizedText;
+  } finally {
+    timeout.cancel();
+  }
+}
+
+export async function generateImageCaption(imageUrl: string): Promise<string> {
+  try {
+    const data = await postToApi("/ai/image-caption", { imageUrl }) as ImageCaptionResponse | null;
+    return data?.imageCaption?.trim() || "";
+  } catch (error) {
+    console.warn("Image caption API unavailable.", error);
+    return "";
+  }
+}
+
 export async function generateLiveFanMessage(recentArtistMessage?: string): Promise<FanMessage> {
   try {
-    const data = await postToApi("/ai/live-fan-message", { recentArtistMessage, persist: false });
+    const data = await postToApi("/ai/live-fan-message", {
+      recentArtistMessage,
+      timeContext: getFanMessageTimeContext(),
+      persist: false
+    });
     if (data?.fanMessage) {
       return normalizeFanMessage(data.fanMessage, `api-live-${Date.now()}`);
     }
@@ -193,6 +324,7 @@ export async function generateLiveBatch(
   try {
     const data = await postToApi("/ai/live-batch", {
       count: safeCount,
+      timeContext: getFanMessageTimeContext(),
       ...(lastIdolMessage ? { lastIdolMessage } : {})
     });
     const fanMessages = data?.fanMessages;
@@ -224,7 +356,10 @@ export async function generateLiveFanMessages(recentArtistMessage?: string, coun
  */
 export async function fetchHistoryBurst(count = 50): Promise<FanMessage[]> {
   try {
-    const data = await postToApi("/ai/history-burst", { count });
+    const data = await postToApi("/ai/history-burst", {
+      count,
+      timeContext: getFanMessageTimeContext()
+    });
     const fanMessages = data?.fanMessages;
     if (fanMessages?.length) {
       return fanMessages.map((item, index) =>

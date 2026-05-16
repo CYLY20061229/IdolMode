@@ -26,7 +26,7 @@ export default function ArtistDetailScreen() {
       </ScrollView>
       <View style={styles.footer}>
         <PrimaryButton
-          title={added ? "已添加" : "添加为 bubble 好友"}
+          title={added ? "已添加" : "添加为好友"}
           disabled={added}
           onPress={() => addArtist(artist)}
           variant={added ? "light" : "primary"}

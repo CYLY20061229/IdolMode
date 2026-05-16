@@ -1,22 +1,28 @@
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { Alert, Linking, Modal, Pressable, ScrollView, StyleSheet, Switch, Text, TextInput, View } from "react-native";
 import { router } from "expo-router";
+import { useFocusEffect } from "@react-navigation/native";
 import { Avatar } from "@/components/Avatar";
 import IconButton from "@/components/IconButton";
 import SettingsRow from "@/components/SettingsRow";
 import { colors, spacing } from "@/constants/theme";
+import { ThemeMode, useAppTheme } from "@/context/AppThemeContext";
 import { useIdolMode } from "@/context/IdolModeContext";
-import { logoutDeviceSession } from "@/services/apiClient";
+import { AccountMe, apiDeleteAccount, apiFetchMe, apiUpdatePreferences, logoutDeviceSession } from "@/services/apiClient";
+import { clearAppCache } from "@/services/cacheApi";
 import { pickProfileAvatarImage } from "@/services/localMedia";
+import { resetOnboardingGuide } from "@/services/onboardingGuide";
 import { uploadImageToOss } from "@/services/uploadApi";
 
 // ── 编辑资料弹窗 ──────────────────────────────────────────────────────────────
 
 function EditProfileModal({ visible, onClose }: { visible: boolean; onClose: () => void }) {
+  const theme = useAppTheme();
   const { myProfile, updateProfile } = useIdolMode();
   const [nickname, setNickname] = useState(myProfile.nickname || "");
   const [signature, setSignature] = useState(myProfile.signature || "");
   const [statusText, setStatusText] = useState(myProfile.statusText || "");
+  const [fanName, setFanName] = useState(myProfile.fanName || "");
   const [avatar, setAvatar] = useState(myProfile.avatar || "");
   const [saving, setSaving] = useState(false);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
@@ -42,11 +48,21 @@ function EditProfileModal({ visible, onClose }: { visible: boolean; onClose: () 
     setSaving(true);
     try {
       const isImageAvatar = /^(https?):/.test(avatar);
+      // Clean fanName: strip @ prefix, trim, no newlines, max 24 chars
+      let cleanFanName: string | null = null;
+      const rawFanName = fanName.replace(/[\r\n]/g, "");
+      if (rawFanName.trim().length > 0) {
+        const cleaned = rawFanName.trim().replace(/^@+/, "").replace(/\s+/g, " ").trim();
+        if (cleaned.length > 0) {
+          cleanFanName = cleaned.slice(0, 24);
+        }
+      }
       const savedProfile = await updateProfile({
         ...myProfile,
         nickname: nickname.trim(),
         signature: signature.trim(),
         statusText: statusText.trim(),
+        fanName: cleanFanName,
         avatar: isImageAvatar ? avatar : (avatar.slice(0, 3).toUpperCase() || "我")
       });
       setAvatar(savedProfile.avatar || "");
@@ -61,8 +77,8 @@ function EditProfileModal({ visible, onClose }: { visible: boolean; onClose: () 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       <Pressable style={modal.backdrop} onPress={onClose}>
-        <Pressable style={modal.sheet}>
-          <Text style={modal.title}>编辑资料</Text>
+        <Pressable style={[modal.sheet, { backgroundColor: theme.colors.card, borderColor: theme.colors.border }]}>
+          <Text style={[modal.title, { color: theme.colors.text }]}>编辑资料</Text>
 
           {/* 头像选择 */}
           <View style={modal.avatarRow}>
@@ -74,49 +90,63 @@ function EditProfileModal({ visible, onClose }: { visible: boolean; onClose: () 
             </Pressable>
           </View>
 
-          <Text style={modal.label}>昵称</Text>
+          <Text style={[modal.label, { color: theme.colors.mutedText }]}>昵称</Text>
           <TextInput
-            style={modal.input}
+            style={[modal.input, { backgroundColor: theme.colors.background, borderColor: theme.colors.border, color: theme.colors.text }]}
             value={nickname}
             onChangeText={setNickname}
             placeholder="你的艺名"
-            placeholderTextColor={colors.mutedText}
+            placeholderTextColor={theme.colors.mutedText}
             maxLength={24}
             returnKeyType="next"
           />
 
-          <Text style={modal.label}>签名</Text>
+          <Text style={[modal.label, { color: theme.colors.mutedText }]}>签名</Text>
           <TextInput
-            style={[modal.input, modal.inputMulti]}
+            style={[modal.input, modal.inputMulti, { backgroundColor: theme.colors.background, borderColor: theme.colors.border, color: theme.colors.text }]}
             value={signature}
             onChangeText={setSignature}
             placeholder="一句话介绍自己"
-            placeholderTextColor={colors.mutedText}
+            placeholderTextColor={theme.colors.mutedText}
             maxLength={60}
             multiline
             returnKeyType="next"
           />
 
-          <Text style={modal.label}>状态</Text>
+          <Text style={[modal.label, { color: theme.colors.mutedText }]}>状态</Text>
           <TextInput
-            style={modal.input}
+            style={[modal.input, { backgroundColor: theme.colors.background, borderColor: theme.colors.border, color: theme.colors.text }]}
             value={statusText}
             onChangeText={setStatusText}
             placeholder="此刻的状态…"
-            placeholderTextColor={colors.mutedText}
+            placeholderTextColor={theme.colors.mutedText}
             maxLength={30}
+            returnKeyType="next"
+          />
+
+          <Text style={[modal.label, { color: theme.colors.mutedText }]}>粉丝名（选填）</Text>
+          <TextInput
+            style={[modal.input, { backgroundColor: theme.colors.background, borderColor: theme.colors.border, color: theme.colors.text }]}
+            value={fanName}
+            onChangeText={(text) => {
+              const cleaned = text.replace(/[\r\n]/g, "").slice(0, 24);
+              setFanName(cleaned);
+            }}
+            placeholder="给你的粉丝起个名字"
+            placeholderTextColor={theme.colors.mutedText}
+            maxLength={24}
             returnKeyType="done"
           />
 
           <Pressable
-            style={[modal.btn, saving && modal.btnDisabled]}
+            style={[modal.btn, { backgroundColor: theme.colors.primary }, saving && modal.btnDisabled]}
             onPress={handleSave}
             disabled={saving || uploadingAvatar}
           >
-            <Text style={modal.btnText}>{saving ? "保存中…" : uploadingAvatar ? "头像上传中…" : "保存"}</Text>
+            <Text style={[modal.btnText, { color: theme.colors.card }]}>{saving ? "保存中…" : uploadingAvatar ? "头像上传中…" : "保存"}</Text>
           </Pressable>
           <Pressable style={modal.cancel} onPress={onClose}>
-            <Text style={modal.cancelText}>取消</Text>
+            <Text style={[modal.cancelText, { color: theme.colors.mutedText }]}>取消</Text>
           </Pressable>
         </Pressable>
       </Pressable>
@@ -127,19 +157,57 @@ function EditProfileModal({ visible, onClose }: { visible: boolean; onClose: () 
 // ── 关于弹窗 ──────────────────────────────────────────────────────────────────
 
 function AboutModal({ visible, onClose }: { visible: boolean; onClose: () => void }) {
+  const theme = useAppTheme();
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <Pressable style={modal.backdrop} onPress={onClose}>
-        <Pressable style={modal.sheet}>
-          <Text style={modal.title}>关于 Idol Mode</Text>
-          <Text style={modal.body}>
+        <Pressable style={[modal.sheet, { backgroundColor: theme.colors.card, borderColor: theme.colors.border }]}>
+          <Text style={[modal.title, { color: theme.colors.text }]}>关于 Idol Mode</Text>
+          <Text style={[modal.body, { color: theme.colors.mutedText }]}>
             Idol Mode 是一款粉丝 × idol 互动模拟器。{"\n\n"}
             你可以扮演 idol 发布营业消息，AI 会生成来自世界各地粉丝的实时反应，让你感受被喜欢的感觉。{"\n\n"}
             版本：1.0.0{"\n"}
             技术栈：React Native · Expo · Qwen AI
           </Text>
-          <Pressable style={modal.btn} onPress={onClose}>
-            <Text style={modal.btnText}>知道了</Text>
+          <Pressable style={[modal.btn, { backgroundColor: theme.colors.primary }]} onPress={onClose}>
+            <Text style={[modal.btnText, { color: theme.colors.card }]}>知道了</Text>
+          </Pressable>
+        </Pressable>
+      </Pressable>
+    </Modal>
+  );
+}
+
+function AppearanceModal({ visible, onClose }: { visible: boolean; onClose: () => void }) {
+  const theme = useAppTheme();
+  const options: Array<{ label: string; value: ThemeMode }> = [
+    { label: "浅色模式", value: "light" },
+    { label: "深色模式", value: "dark" }
+  ];
+
+  return (
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+      <Pressable style={modal.backdrop} onPress={onClose}>
+        <Pressable style={[modal.sheet, { backgroundColor: theme.colors.card, borderColor: theme.colors.border }]}>
+          <Text style={[modal.title, { color: theme.colors.text }]}>外观</Text>
+          {options.map((option) => {
+            const selected = theme.themeMode === option.value;
+            return (
+              <Pressable
+                key={option.value}
+                onPress={() => {
+                  void theme.setThemeMode(option.value);
+                  onClose();
+                }}
+                style={[modal.optionRow, { backgroundColor: selected ? theme.colors.secondary : theme.colors.background }]}
+              >
+                <Text style={[modal.optionText, { color: theme.colors.text }]}>{option.label}</Text>
+                <Text style={[modal.optionCheck, { color: theme.colors.primaryDeep }]}>{selected ? "✓" : ""}</Text>
+              </Pressable>
+            );
+          })}
+          <Pressable style={modal.cancel} onPress={onClose}>
+            <Text style={[modal.cancelText, { color: theme.colors.mutedText }]}>取消</Text>
           </Pressable>
         </Pressable>
       </Pressable>
@@ -150,10 +218,34 @@ function AboutModal({ visible, onClose }: { visible: boolean; onClose: () => voi
 // ── 主页面 ────────────────────────────────────────────────────────────────────
 
 export default function SettingsScreen() {
-  const { myProfile } = useIdolMode();
+  const theme = useAppTheme();
+  const { myProfile, refreshPreferences } = useIdolMode();
   const [editVisible, setEditVisible] = useState(false);
   const [aboutVisible, setAboutVisible] = useState(false);
-  const [notifEnabled, setNotifEnabled] = useState(true);
+  const [appearanceVisible, setAppearanceVisible] = useState(false);
+  const [account, setAccount] = useState<AccountMe | null>(null);
+  const [notifEnabled, setNotifEnabled] = useState(false);
+  const [autoTranslateEnabled, setAutoTranslateEnabled] = useState(false);
+  const [savingNotif, setSavingNotif] = useState(false);
+  const [savingTranslate, setSavingTranslate] = useState(false);
+  const [deletingAccount, setDeletingAccount] = useState(false);
+  const [clearingCache, setClearingCache] = useState(false);
+  const themeLabel = theme.themeMode === "dark" ? "深色模式" : "浅色模式";
+  const emailMasked = account?.user?.emailMasked || "";
+
+  useFocusEffect(
+    useCallback(() => {
+      let cancelled = false;
+      void apiFetchMe().then((data) => {
+        if (!cancelled) {
+          setAccount(data);
+          setNotifEnabled(Boolean(data?.preferences?.fanNotificationsEnabled));
+          setAutoTranslateEnabled(Boolean(data?.preferences?.autoTranslateEnabled));
+        }
+      });
+      return () => { cancelled = true; };
+    }, [])
+  );
 
   const handleLogout = () => {
     Alert.alert(
@@ -180,14 +272,93 @@ export default function SettingsScreen() {
   const handleClearCache = () => {
     Alert.alert(
       "清除缓存",
-      "这会清除本地缓存的粉丝消息和贴纸，不影响账号数据。",
+      "将清除临时图片、语音和本地缓存，不会删除账号、聊天记录和营业值。",
       [
         { text: "取消", style: "cancel" },
         {
           text: "清除",
           style: "destructive",
+          onPress: async () => {
+            setClearingCache(true);
+            try {
+              await clearAppCache();
+              Alert.alert("缓存已清理");
+            } catch {
+              Alert.alert("清理失败，请稍后重试");
+            } finally {
+              setClearingCache(false);
+            }
+          }
+        }
+      ]
+    );
+  };
+
+  const handleNotificationToggle = async (enabled: boolean) => {
+    const previous = notifEnabled;
+    setNotifEnabled(enabled);
+    setSavingNotif(true);
+    try {
+      const preferences = await apiUpdatePreferences({ fanNotificationsEnabled: enabled });
+      setNotifEnabled(preferences.fanNotificationsEnabled);
+      setAccount((current) => current ? { ...current, preferences } : current);
+    } catch {
+      setNotifEnabled(previous);
+      Alert.alert("保存失败", "粉丝通知设置没有保存成功，请稍后再试。");
+    } finally {
+      setSavingNotif(false);
+    }
+  };
+
+  const handleAutoTranslateToggle = async (enabled: boolean) => {
+    const previous = autoTranslateEnabled;
+    setAutoTranslateEnabled(enabled);
+    setSavingTranslate(true);
+    try {
+      const preferences = await apiUpdatePreferences({ autoTranslateEnabled: enabled });
+      setAutoTranslateEnabled(preferences.autoTranslateEnabled);
+      setAccount((current) => current ? { ...current, preferences } : current);
+      await refreshPreferences();
+    } catch {
+      setAutoTranslateEnabled(previous);
+      Alert.alert("保存失败", "一键翻译设置没有保存成功，请稍后再试。");
+    } finally {
+      setSavingTranslate(false);
+    }
+  };
+
+  const handleDeleteAccount = () => {
+    Alert.alert(
+      "删除账号",
+      "删除后邮箱信息会删除或匿名化，聊天记录、AI 记忆、营业值、粉丝数、用户偏好会删除，上传图片/语音会从 OSS 删除或进入异步删除队列，所有 token 会失效。此操作不可恢复。",
+      [
+        { text: "取消", style: "cancel" },
+        {
+          text: "确认删除",
+          style: "destructive",
           onPress: () => {
-            Alert.alert("已清除", "缓存已清除。");
+            Alert.alert(
+              "再次确认删除",
+              "请再次确认：账号删除后无法恢复，当前账号将退出登录。",
+              [
+                { text: "取消", style: "cancel" },
+                {
+                  text: "删除账号",
+                  style: "destructive",
+                  onPress: async () => {
+                    setDeletingAccount(true);
+                    try {
+                      await apiDeleteAccount();
+                      router.replace("/");
+                    } catch (error) {
+                      Alert.alert("删除失败", error instanceof Error ? error.message : "账号没有删除成功，请稍后再试。");
+                    } finally {
+                      setDeletingAccount(false);
+                    }
+                  }
+                }
+              ]
+            );
           }
         }
       ]
@@ -200,22 +371,23 @@ export default function SettingsScreen() {
     });
   };
 
-  const handlePrivacy = () => {
-    Linking.openURL("https://idolmode.app/privacy").catch(() => {});
+  const handleReplayGuide = async () => {
+    await resetOnboardingGuide();
+    Alert.alert("已重置", "下次打开 App 时会重新显示使用指引。");
   };
 
   return (
-    <View style={styles.screen}>
+    <View style={[styles.screen, { backgroundColor: theme.colors.background }]}>
       <View style={styles.header}>
         <IconButton name="chevron-back" accessibilityLabel="返回" onPress={() => router.back()} />
-        <Text style={styles.title}>设置</Text>
+        <Text style={[styles.title, { color: theme.colors.text }]}>设置</Text>
         <View style={styles.spacer} />
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
 
         {/* 账号 */}
-        <Text style={styles.sectionLabel}>账号</Text>
+        <Text style={[styles.sectionLabel, { color: theme.colors.mutedText }]}>账号</Text>
         <View style={styles.group}>
           <SettingsRow
             title="编辑资料"
@@ -224,55 +396,77 @@ export default function SettingsScreen() {
             onPress={() => setEditVisible(true)}
           />
           <SettingsRow
-            title="邮箱"
+            title={emailMasked ? "邮箱" : "邮箱登录 / 绑定"}
             icon="mail-outline"
-            value={myProfile.email || "未绑定"}
-            onPress={() => Alert.alert("邮箱绑定", "邮箱绑定功能即将上线。")}
+            value={emailMasked || "Guest"}
+            onPress={() => router.push("/email-login")}
           />
         </View>
 
         {/* 通知 */}
-        <Text style={styles.sectionLabel}>通知</Text>
+        <Text style={[styles.sectionLabel, { color: theme.colors.mutedText }]}>通知</Text>
         <View style={styles.group}>
-          <View style={styles.switchRow}>
+          <View style={[styles.switchRow, { backgroundColor: theme.colors.card, borderColor: theme.colors.border }]}>
             <View style={styles.switchLeft}>
-              <View style={styles.iconWrap}>
+              <View style={[styles.iconWrap, { backgroundColor: theme.colors.background }]}>
                 <Text style={styles.iconEmoji}>🔔</Text>
               </View>
-              <Text style={styles.switchTitle}>粉丝消息通知</Text>
+              <Text style={[styles.switchTitle, { color: theme.colors.text }]}>粉丝消息通知</Text>
             </View>
             <Switch
               value={notifEnabled}
-              onValueChange={setNotifEnabled}
-              trackColor={{ false: colors.border, true: colors.primary }}
-              thumbColor={colors.card}
+              onValueChange={handleNotificationToggle}
+              disabled={savingNotif}
+              trackColor={{ false: theme.colors.border, true: theme.colors.primary }}
+              thumbColor={theme.colors.card}
             />
           </View>
         </View>
 
         {/* AI 功能 */}
-        <Text style={styles.sectionLabel}>AI 功能</Text>
+        <Text style={[styles.sectionLabel, { color: theme.colors.mutedText }]}>AI 功能</Text>
         <View style={styles.group}>
           <SettingsRow
-            title="AI 记忆"
+            title="记忆与日程"
             icon="star-outline"
             onPress={() => router.push("/my-memories")}
           />
         </View>
 
         {/* 通用 */}
-        <Text style={styles.sectionLabel}>通用</Text>
+        <Text style={[styles.sectionLabel, { color: theme.colors.mutedText }]}>通用</Text>
         <View style={styles.group}>
           <SettingsRow
-            title="清除缓存"
+            title="外观"
+            icon="contrast-outline"
+            value={themeLabel}
+            onPress={() => setAppearanceVisible(true)}
+          />
+          <View style={[styles.switchRow, { backgroundColor: theme.colors.card, borderColor: theme.colors.border }]}>
+            <View style={styles.switchLeft}>
+              <View style={[styles.iconWrap, { backgroundColor: theme.colors.background }]}>
+                <Text style={styles.iconEmoji}>译</Text>
+              </View>
+              <Text style={[styles.switchTitle, { color: theme.colors.text }]}>一键翻译</Text>
+            </View>
+            <Switch
+              value={autoTranslateEnabled}
+              onValueChange={handleAutoTranslateToggle}
+              disabled={savingTranslate}
+              trackColor={{ false: theme.colors.border, true: theme.colors.primary }}
+              thumbColor={theme.colors.card}
+            />
+          </View>
+          <SettingsRow
+            title={clearingCache ? "清除中..." : "清除缓存"}
             icon="trash-outline"
-            onPress={handleClearCache}
+            onPress={clearingCache ? undefined : handleClearCache}
             hideChevron
           />
           <SettingsRow
-            title="隐私政策"
-            icon="lock-closed-outline"
-            onPress={handlePrivacy}
+            title="重新查看使用指引"
+            icon="help-circle-outline"
+            onPress={handleReplayGuide}
           />
           <SettingsRow
             title="意见反馈"
@@ -286,7 +480,47 @@ export default function SettingsScreen() {
           />
         </View>
 
+        {/* 隐私与协议 */}
+        <Text style={[styles.sectionLabel, { color: theme.colors.mutedText }]}>隐私与协议</Text>
+        <View style={styles.group}>
+          <SettingsRow
+            title="用户协议"
+            icon="document-text-outline"
+            onPress={() => router.push("/terms")}
+          />
+          <SettingsRow
+            title="隐私政策"
+            icon="lock-closed-outline"
+            onPress={() => router.push("/privacy")}
+          />
+          <SettingsRow
+            title="AI 生成内容说明"
+            icon="color-wand-outline"
+            onPress={() => router.push("/ai-disclosure")}
+          />
+          <SettingsRow
+            title="账号删除说明"
+            icon="person-remove-outline"
+            onPress={() => router.push("/account-deletion")}
+          />
+        </View>
+
         {/* 危险区 */}
+        {emailMasked ? (
+          <>
+            <Text style={[styles.sectionLabel, { color: theme.colors.mutedText }]}>账号删除</Text>
+            <View style={styles.group}>
+              <SettingsRow
+                title={deletingAccount ? "删除中..." : "删除账号"}
+                icon="person-remove-outline"
+                onPress={deletingAccount ? undefined : handleDeleteAccount}
+                danger
+                hideChevron
+              />
+            </View>
+          </>
+        ) : null}
+
         <View style={styles.group}>
           <SettingsRow
             title="退出登录"
@@ -297,11 +531,12 @@ export default function SettingsScreen() {
           />
         </View>
 
-        <Text style={styles.version}>Idol Mode v1.0.0</Text>
+        <Text style={[styles.version, { color: theme.colors.mutedText }]}>Idol Mode v1.0.0</Text>
       </ScrollView>
 
       <EditProfileModal visible={editVisible} onClose={() => setEditVisible(false)} />
       <AboutModal visible={aboutVisible} onClose={() => setAboutVisible(false)} />
+      <AppearanceModal visible={appearanceVisible} onClose={() => setAppearanceVisible(false)} />
     </View>
   );
 }
@@ -457,6 +692,22 @@ const modal = StyleSheet.create({
     color: colors.mutedText,
     fontSize: 14,
     lineHeight: 22
+  },
+  optionRow: {
+    minHeight: 48,
+    borderRadius: 18,
+    paddingHorizontal: 14,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between"
+  },
+  optionText: {
+    fontSize: 15,
+    fontWeight: "800"
+  },
+  optionCheck: {
+    fontSize: 17,
+    fontWeight: "900"
   },
   btn: {
     minHeight: 50,

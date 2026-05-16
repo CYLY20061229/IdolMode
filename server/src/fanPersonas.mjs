@@ -8,7 +8,7 @@ export const languages = ["zh", "en", "ko", "jp", "es"];
 export const fanPersonas = [
   {
     type: "mom fan",
-    style: "像亲妈粉，会关心吃饭、睡觉、穿衣服、身体状态；语气温柔但有点操心，常说宝宝别累着",
+    style: "像亲妈粉，会关心吃饭、穿衣服、身体状态；语气温柔但有点操心，常说宝宝别累着",
     languages: ["zh", "ko"]
   },
   {
@@ -24,7 +24,7 @@ export const fanPersonas = [
   {
     type: "data worker",
     style: "数据粉/打投粉，像在负责榜单、播放量、宣传、控评；说话直接，有点疲惫但很忠诚",
-    languages: ["zh", "en", "ko"]
+    languages: ["zh", "en", "ko", "jp"]
   },
   {
     type: "old fan with resentment",
@@ -34,16 +34,16 @@ export const fanPersonas = [
   {
     type: "teasing toxic fan",
     style: "嘴毒但还爱，辱追感，阴阳怪气催营业；可以抱怨、嘲讽、说失望，但不要出现死亡威胁或真实攻击",
-    languages: ["zh"]
+    languages: ["zh", "ko", "jp"]
   },
   {
     type: "chaotic meme fan",
-    style: "抽象发疯粉，互联网梗很多，会说阴暗爬行、我先疯了、你一营业我就复活，语气夸张搞笑",
+    style: "抽象发疯粉，互联网梗很多，会说雷霆、很神圣、你一营业我就复活，语气夸张搞笑",
     languages: ["zh", "en"]
   },
   {
     type: "hungry waiting fan",
-    style: "等饭粉，长期等营业、等自拍、等新歌；语气卑微，像冷宫粉丝，常说饭呢、求投喂、再不营业我就饿死了",
+    style: "等饭粉，长期等营业、等自拍、等新歌；语气卑微，像冷宫粉丝，常说自拍呢、求投喂、再不营业我就饿死了",
     languages: ["zh", "es", "en"]
   },
   {
@@ -74,7 +74,7 @@ export const fanPersonas = [
   {
     type: "stage watcher",
     style: "舞台粉，重点关注唱功、舞蹈、表情管理、舞台状态、练习痕迹；夸得比较专业",
-    languages: ["zh", "ko", "en"]
+    languages: ["zh", "ko", "en", "jp"]
   },
   {
     type: "music listener",
@@ -83,12 +83,12 @@ export const fanPersonas = [
   },
   {
     type: "soft encourager",
-    style: "稳定温柔粉，不会发疯，不会施压，只是简单地鼓励、陪伴、让 idol 不要太自责",
+    style: "稳定温柔粉，不会发疯，不会施压，只是简单地鼓励、陪伴、说idol是ta存在的意义，让 idol 不要太自责",
     languages: ["zh", "jp", "ko"]
   },
   {
     type: "protective big sibling",
-    style: "姐姐粉/哥哥粉感，现实、成熟、保护欲强，会提醒 idol 别被外界影响，先照顾好自己",
+    style: "姐姐粉/哥哥粉感，现实、成熟、保护欲强，会提醒 idol 别被外界影响，先照顾好自己,会说不再依赖姐姐算长大吗",
     languages: ["zh", "en"]
   },
   {
@@ -141,15 +141,26 @@ export const fanPersonas = [
     style: "回归乞讨粉，每次都在问新歌、舞台、专辑、巡演；语气卑微又急切",
     languages: ["zh", "en", "es"]
   },
-  {
-    type: "sleep police",
-    style: "睡觉警察，会因为 idol 熬夜而假装生气，语气像训人但本质是关心",
-    languages: ["zh", "ko"]
-  },
+ 
   {
     type: "photo beggar",
     style: "自拍乞讨粉，很想要照片、自拍、练习室照、生活照；会可爱催更，不要太强硬",
     languages: ["zh", "en", "jp"]
+  },
+  {
+    type: "breakfast check fan",
+    style: "早间粉，会在早上关心早饭、早八、通勤、上班前状态；语气像刚醒来就来报到，轻快、有生活感",
+    languages: ["zh", "en", "jp", "ko"]
+  },
+  {
+    type: "lunch break fan",
+    style: "午饭粉，会在午间问有没有吃午饭、食堂/外卖吃什么、午休够不够；语气亲近，像午休时偷看消息",
+    languages: ["zh", "en", "jp", "ko", "es"]
+  },
+  {
+    type: "dinner check fan",
+    style: "晚饭粉，会在傍晚问晚饭、下班/放学了吗、今天累不累；语气温柔但不深夜化",
+    languages: ["zh", "en", "ko"]
   },
   {
     type: "selfie obsessed",
@@ -192,13 +203,8 @@ export const fanPersonas = [
     languages: ["zh", "en", "ko"]
   },
   {
-    type: "late night fan",
-    style: "深夜粉，常在凌晨出现，情绪更柔软、更脆弱；会说睡不着、想你、今天终于结束了",
-    languages: ["zh", "en", "jp", "ko"]
-  },
-  {
     type: "casual passerby fan",
-    style: "路人粉，还没有完全入坑；语气比较克制，会说只是路过、偶然看到、但慢慢有点在意",
+    style: "路人粉，还没有完全入坑；语气比较克制，会说只是在tour、随便看看、但慢慢有点在意",
     languages: ["zh", "en", "jp"]
   },
   {
@@ -228,7 +234,7 @@ export const fanPersonas = [
   },
   {
     type: "random confession fan",
-    style: "突然告白型粉丝，会没头没尾地说喜欢你、谢谢你、今天也因为你撑过去了；像深夜突然发出的真心话",
+    style: "突然告白型粉丝，会没头没尾地说喜欢你、谢谢你、今天也因为你撑过去了；像突然冒出来的真心话",
     languages: ["zh", "en", "jp", "ko"]
   },
   {
@@ -282,10 +288,10 @@ export const toxicFanNicknamePool = [
   "怎么还不营业", "今天又失踪了", "你还知道回来", "营业很难吗", "少装神秘", "你最好有事",
   "今天必须营业", "营业欠费了吗", "又装消失是吧", "你是不是忘了我们", "搞事业好吗",
   "作品呢作品呢", "专辑什么时候发", "舞台在哪里", "事业批真的会急", "你能不能争气点",
-  "数据女工已崩溃", "榜单保安发怒", "音源巡逻员", "回归倒计时bot", "今天练声了吗",
-  "你最好在写歌", "少营业多练习", "别逼我催你", "事业心在哪里", "舞台粉很着急",
-  "作品粉想报警", "恋爱禁止bot", "恋爱达咩", "房塌观察员", "塌房预警机",
-  "事业上升期别恋爱", "恋爱脑退散", "单身证明交一下"
+  "aaaaa", "嗯嗯嗯嗯嗯", "姐姐的小狗", "回归倒计时bot", "今天练声了吗",
+  "姐姐的狗", "少营业多练习", "姐姐的猫", "爱你爱你", "用户1124",
+  "用户1199", "恋爱禁止bot", "恋爱达咩", "哈哈哈哈哈", "kkkkk",
+  "事业上升期别恋爱", "恋爱脑退散", "单身吗宝宝"
 ];
 
 export const fanNicknamePool = [
@@ -308,16 +314,22 @@ export function getRandomFanNickname() {
 }
 
 let fallbackIndex = 0;
-
 export function normalizeFanMessage(message, index, kind = "ambient") {
   const language = languages.includes(message?.language) ? message.language : "zh";
   const personaType = fanPersonas.some((persona) => persona.type === message?.personaType)
     ? message.personaType
     : fanPersonas[index % fanPersonas.length].type;
+
   const content = String(message?.content || "今天也在等你。").slice(0, 120);
+  const rawTranslatedContent = String(message?.translatedContent || "").trim();
+
+  // 保留原始语言，不要把外文降级成 zh。
+  // 如果有译文，就用译文；没有译文，就先用原文兜底。
+  // 是否显示“暂无译文”应该交给前端组件判断，而不是在这里改 language。
+  const translatedContent = rawTranslatedContent || content;
+
   const messageKind = message?.messageKind === "reaction" ? "reaction" : kind;
 
-  // 保留 usedMemoryIds（reaction-burst 记忆注入用）
   const usedMemoryIds = Array.isArray(message?.usedMemoryIds) ? message.usedMemoryIds : [];
 
   return {
@@ -326,7 +338,7 @@ export function normalizeFanMessage(message, index, kind = "ambient") {
     avatar: animalAvatars.includes(message?.avatar) ? message.avatar : animalAvatars[index % animalAvatars.length],
     language,
     content,
-    translatedContent: String(message?.translatedContent || content).slice(0, 140),
+    translatedContent: translatedContent.slice(0, 140),
     personaType,
     messageKind,
     fromMessageId: message?.fromMessageId,
@@ -337,16 +349,31 @@ export function normalizeFanMessage(message, index, kind = "ambient") {
 export function fallbackFanMessage(index = 0, recentArtistMessage = "", kind = "ambient") {
   const persona = fanPersonas[(fallbackIndex + index) % fanPersonas.length];
   const ambientSamples = [
-    "今天也在等你，不急。",
+    "今天也在等你",
     "看到通知亮起来就开心。",
-    "短短一句也够我撑过今晚。",
+    "短短一句也够我撑过今天。",
     "希望你今天也被温柔对待。",
     "自拍自拍自拍求求了。",
     "就一张，求你了。",
     "妈妈",
     "妈！",
     "好想法你，法不到你人生没有意义。",
-    "法到你是我这辈子最对的事。"
+    "法到你是我这辈子最对的事。",
+    "呃呃呃呃呃",
+    "我爱你宝宝",
+    "你是我存在的意义",
+    "不再依赖姐姐算长大吗",
+    "看到你就开心",
+    "喜欢你之后的每一天都很幸福",
+    "我在等你",
+    "今天吃什么了？",
+    "好好吃饭啊宝宝",
+    "守护脸颊肉！",
+    "喜欢你",
+    "回归概念透露一下",
+    "宝宝只要你幸福谁不幸福都可以",
+    "世界坏姐姐好",
+    "巡演一定要抢到票",
   ];
   const reactionSamples = [
 
@@ -381,22 +408,33 @@ export function fallbackFanMessages(count = 4, recentArtistMessage = "", forceKi
   fallbackIndex += count;
   return messages;
 }
-
 export function buildSystemPrompt() {
+  const sampledNicknames = fanNicknamePool
+    .sort(() => Math.random() - 0.5)
+    .slice(0, 80)
+    .join(", ");
+
   return `You generate short fictional idol fan messages for an app prototype.
+
 Rules:
 - Never mention real artists, real platforms, real agencies, or real fandom names.
 - Messages should feel like real fans, not customer support.
 - Use varied emotions: excited, caring, teasing, waiting, comforting, asking for updates.
 - Pick from these fan persona types and make each persona sound distinct:
 ${fanPersonas.map((persona) => `  - ${persona.type}: ${persona.style}; likely languages: ${persona.languages.join(", ")}`).join("\n")}
-- Use varied fictional nicknames. You may use or remix names from this pool:
-${fanNicknamePool.join(", ")}
-- Keep every message short.
+
+Nickname guidance:
+- Use varied fictional nicknames.
+- You may use or remix names from this pool:
+${sampledNicknames}
+
+Output rules:
 - Return only valid JSON.
+- Keep every message short.
 - language must be one of: zh, en, ko, jp, es.
 - avatar must be one of: ${animalAvatars.join(", ")}.
 - personaType must be one of: ${fanPersonas.map((persona) => persona.type).join(", ")}.
 - messageKind must be "ambient" for self-talk / general live chatter, or "reaction" when responding to a recent idol update.
-- translatedContent must always be Simplified Chinese.`;
+- translatedContent must always be Simplified Chinese.
+- If language is en, ko, jp, or es, translatedContent must be a Chinese translation, never the original foreign text.`;
 }

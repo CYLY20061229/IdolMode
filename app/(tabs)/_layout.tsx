@@ -1,8 +1,9 @@
 import { Tabs } from "expo-router";
 import TabIcon from "../../components/TabIcon";
-import { colors } from "@/constants/theme";
+import { useAppTheme } from "@/context/AppThemeContext";
 
 export default function TabsLayout() {
+  const theme = useAppTheme();
   return (
     <Tabs
       screenOptions={{
@@ -13,7 +14,7 @@ export default function TabsLayout() {
           paddingTop: 10,
           paddingBottom: 18,
           borderTopWidth: 0,
-          backgroundColor: colors.card
+          backgroundColor: theme.colors.card
         }
       }}
     >

@@ -119,8 +119,9 @@ export function calcFollowerLoss({ inactiveDays, followers, initialFollowers, cr
  * @param {object} stats - 当前 idol_growth_stats 行（camelCase）
  * @returns {{ patch: object, newAchievements: string[], bonusFollowers: number }}
  */
-export function settleDailyGrowth(stats) {
+export function settleDailyGrowth(stats, options = {}) {
   const today = todayCST();
+  const followerLossEnabled = Boolean(options.followerLossEnabled);
   const lastSettlement = stats.lastSettlementDate;
 
   // 已经结算过今天，跳过
@@ -135,30 +136,42 @@ export function settleDailyGrowth(stats) {
   let streakDays = stats.streakDays ?? 0;
   let inactiveDays = stats.inactiveDays ?? 0;
 
+  // if (daysSinceActive === 1) {
+  //   // 昨天营业了，连续+1
+  //   streakDays += 1;
+  //   inactiveDays = 0;
+  // } else if (daysSinceActive === 0) {
+  //   // 今天已经营业（结算在当天触发），保持
+  //   inactiveDays = 0;
+  // } else {
+  //   // 断签
+  //   streakDays = 0;
+  //   inactiveDays = daysSinceActive;
+  // }
   if (daysSinceActive === 1) {
-    // 昨天营业了，连续+1
-    streakDays += 1;
-    inactiveDays = 0;
-  } else if (daysSinceActive === 0) {
-    // 今天已经营业（结算在当天触发），保持
-    inactiveDays = 0;
-  } else {
-    // 断签
-    streakDays = 0;
-    inactiveDays = daysSinceActive;
-  }
+  streakDays = Math.max(1, streakDays) + 1;
+  inactiveDays = 0;
+} else if (daysSinceActive === 0) {
+  streakDays = Math.max(1, streakDays);
+  inactiveDays = 0;
+} else {
+  streakDays = 0;
+  inactiveDays = daysSinceActive;
+}
 
   // ── 粉丝增长 ──
   const bv = stats.dailyBusinessValue ?? 0;
   const gain = calcFollowerGain(bv);
 
   // ── 掉粉 ──
-  const loss = calcFollowerLoss({
-    inactiveDays,
-    followers: stats.followers ?? 0,
-    initialFollowers: stats.initialFollowers ?? 0,
-    createdDate: stats.createdDate ?? today
-  });
+  const loss = followerLossEnabled
+    ? calcFollowerLoss({
+        inactiveDays,
+        followers: stats.followers ?? 0,
+        initialFollowers: stats.initialFollowers ?? 0,
+        createdDate: stats.createdDate ?? today
+      })
+    : 0;
 
   let followers = Math.max(
     stats.initialFollowers ?? 0,

@@ -4,9 +4,11 @@ import { router } from "expo-router";
 import ChatListItem from "@/components/ChatListItem";
 import IconButton from "@/components/IconButton";
 import { colors, spacing } from "@/constants/theme";
+import { useAppTheme } from "@/context/AppThemeContext";
 import { useIdolMode } from "@/context/IdolModeContext";
 
 export default function ChatsScreen() {
+  const theme = useAppTheme();
   const { myProfile, addedArtists, removeArtist, idolThreads } = useIdolMode();
   const [deleteMode, setDeleteMode] = useState(false);
 
@@ -17,15 +19,15 @@ export default function ChatsScreen() {
   };
 
   return (
-    <View style={styles.screen}>
+    <View style={[styles.screen, { backgroundColor: theme.colors.background }]}>
       <View style={styles.header}>
-        <Text style={styles.title}>聊天</Text>
+        <Text style={[styles.title, { color: theme.colors.text }]}>聊天</Text>
         <View style={styles.actions}>
           <IconButton name="search-outline" accessibilityLabel="搜索聊天" />
           <IconButton
             name={deleteMode ? "checkmark-outline" : "trash-outline"}
-            color={deleteMode ? colors.primaryDeep : colors.text}
-            accessibilityLabel="管理 bubble 好友"
+            color={deleteMode ? theme.colors.primaryDeep : theme.colors.text}
+            accessibilityLabel="管理好友"
             onPress={() => setDeleteMode((value) => !value)}
           />
         </View>
@@ -40,7 +42,7 @@ export default function ChatsScreen() {
           backgroundColor={colors.secondary}
         />
 
-        <Text style={styles.sectionTitle}>bubble 好友</Text>
+        <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>好友</Text>
         <View style={styles.list}>
           {addedArtists.map((artist) => (
             <ChatListItem
@@ -54,7 +56,7 @@ export default function ChatsScreen() {
               backgroundColor={artist.background}
             />
           ))}
-          {addedArtists.length === 0 ? <Text style={styles.empty}>还没有 bubble 好友，去「好友」页添加艺人吧。</Text> : null}
+          {addedArtists.length === 0 ? <Text style={[styles.empty, { color: theme.colors.mutedText }]}>还没有好友，去「好友」页添加艺人吧。</Text> : null}
         </View>
       </ScrollView>
     </View>
@@ -64,7 +66,6 @@ export default function ChatsScreen() {
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: colors.background,
     paddingTop: 58,
     paddingHorizontal: spacing.screen
   },

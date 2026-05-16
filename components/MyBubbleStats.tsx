@@ -1,5 +1,6 @@
 import { StyleSheet, Text, View } from "react-native";
-import { colors, shadow } from "@/constants/theme";
+import { shadow } from "@/constants/theme";
+import { useAppTheme } from "@/context/AppThemeContext";
 import { IdolGrowthStats } from "@/types/idol";
 
 type MyBubbleStatsProps = {
@@ -13,6 +14,7 @@ function formatFollowers(n: number): string {
 }
 
 export default function MyBubbleStats({ growthStats, fanMessageCount }: MyBubbleStatsProps) {
+  const theme = useAppTheme();
   const followers = growthStats ? formatFollowers(growthStats.followers) : "—";
   const dailyPct = growthStats
     ? `${Math.round((growthStats.dailyBusinessValue / growthStats.maxDailyBusinessValue) * 100)}%`
@@ -28,13 +30,13 @@ export default function MyBubbleStats({ growthStats, fanMessageCount }: MyBubble
   ] as const;
 
   return (
-    <View style={styles.card}>
-      <Text style={styles.title}>我的 bubble</Text>
+    <View style={[styles.card, { backgroundColor: theme.colors.card }]}>
+      <Text style={[styles.title, { color: theme.colors.text }]}>我的 bubble</Text>
       <View style={styles.grid}>
         {stats.map(([label, value]) => (
-          <View key={label} style={styles.stat}>
-            <Text style={styles.value}>{value}</Text>
-            <Text style={styles.label}>{label}</Text>
+          <View key={label} style={[styles.stat, { backgroundColor: theme.colors.background }]}>
+            <Text style={[styles.value, { color: theme.colors.primaryDeep }]}>{value}</Text>
+            <Text style={[styles.label, { color: theme.colors.mutedText }]}>{label}</Text>
           </View>
         ))}
       </View>
@@ -45,13 +47,11 @@ export default function MyBubbleStats({ growthStats, fanMessageCount }: MyBubble
 const styles = StyleSheet.create({
   card: {
     ...shadow,
-    backgroundColor: colors.card,
     borderRadius: 28,
     padding: 18,
     gap: 14
   },
   title: {
-    color: colors.text,
     fontSize: 18,
     fontWeight: "900"
   },
@@ -62,18 +62,15 @@ const styles = StyleSheet.create({
   },
   stat: {
     width: "47%",
-    backgroundColor: colors.background,
     borderRadius: 20,
     padding: 13,
     gap: 5
   },
   value: {
-    color: colors.primaryDeep,
     fontSize: 20,
     fontWeight: "900"
   },
   label: {
-    color: colors.mutedText,
     fontSize: 12,
     lineHeight: 16
   }
