@@ -304,7 +304,15 @@ export async function generateImageCaption(imageUrl) {
   }
 }
 
-export async function generateReactionBurst(message, count = 16, quotedContent = null, memoryContext = "", timeContext = {}, imageCaption = "") {
+export async function generateReactionBurst(
+  message,
+  count = 16,
+  quotedContent = null,
+  memoryContext = "",
+  timeContext = {},
+  imageCaption = "",
+  artistProfile = {}
+) {
   const safeCount = Math.max(8, Math.min(Number(count || 16), 16));
   const batchSize = 8;
   const batches = Math.ceil(safeCount / batchSize);
@@ -313,30 +321,52 @@ export async function generateReactionBurst(message, count = 16, quotedContent =
   for (let batch = 0; batch < batches; batch++) {
     const batchCount = Math.min(batchSize, safeCount - fanMessages.length);
     if (batchCount <= 0) break;
-    const batchMessages = await generateReactionBurstBatch(message, batchCount, quotedContent, memoryContext, batch + 1, batches, timeContext, imageCaption);
+   const batchMessages = await generateReactionBurstBatch(
+  message,
+  batchCount,
+  quotedContent,
+  memoryContext,
+  batch + 1,
+  batches,
+  timeContext,
+  imageCaption,
+  artistProfile
+);
     fanMessages.push(...batchMessages);
   }
 
   return fanMessages.slice(0, safeCount);
 }
 
-async function generateReactionBurstBatch(message, count = 8, quotedContent = null, memoryContext = "", batchNumber = 1, totalBatches = 1, timeContext = {}, imageCaption = "") {
+async function generateReactionBurstBatch(
+  message,
+  count = 8,
+  quotedContent = null,
+  memoryContext = "",
+  batchNumber = 1,
+  totalBatches = 1,
+  timeContext = {},
+  imageCaption = "",
+  artistProfile = {}
+) {
   const safeCount = Math.max(1, Math.min(Number(count || 8), 8));
   const quotedLine = quotedContent
     ? `\nThe idol also quoted this fan message in their post: "${String(quotedContent).slice(0, 200)}"\nSome fans should react to the quoted fan message too — jealousy, curiosity, wanting to be quoted next, etc.\n`
     : "";
+    const artistProfileLine = buildArtistProfilePrompt(artistProfile);
   const imageLine = imageCaption
     ? `\nThe idol also attached an image. Image description in Chinese: "${String(imageCaption).slice(0, 180)}"\nFans may naturally react to visible image details, but must not invent details beyond this description.\n`
     : "";
   try {
-    const content = await callAi(`The idol just posted this bubble update: "${String(message || "").slice(0, 400)}"
+const content = await callAi(`The idol just posted this bubble update: "${String(message || "").slice(0, 400)}"
+${artistProfileLine}
 ${quotedLine}${imageLine}
 Generate ${safeCount} fan reactions for batch ${batchNumber}/${totalBatches}. Make them feel like a real fan comment section exploding after an idol posts.
 ${timeContextPrompt(timeContext)}
 
 Distribution rules (approximate):
-- 50% direct reactions to the idol's exact words/content or attached image if present
-- 15% over-interpretation / reading too much into it
+- 57% direct reactions to the idol's exact words/content or attached image if present
+- 8% over-interpretation / reading too much into it
 - 15% caring about idol's health/emotions
 - 10% fans relating it to their own life
 - 5% chaotic/absurd humor
@@ -429,6 +459,34 @@ JSON shape:
     });
     return fallbackFanMessages(count, message);
   }
+}
+
+
+function buildArtistProfilePrompt(artistProfile = {}) {
+  const nickname = String(artistProfile?.nickname || "").trim().slice(0, 40);
+  const fanName = String(artistProfile?.fanName || artistProfile?.fan_name || "").trim().slice(0, 40);
+  const signature = String(artistProfile?.signature || "").trim().slice(0, 120);
+  const statusText = String(artistProfile?.statusText || artistProfile?.status_text || "").trim().slice(0, 120);
+
+  if (!nickname && !fanName && !signature && !statusText) {
+    return "";
+  }
+
+  return `
+Idol profile context:
+- The idol's display name / stage name is "${nickname || "the idol"}".
+- Fans know this name.
+- If the idol mentions "${nickname || "their own name"}" in first person or third person, fans should understand it refers to the idol themself.
+- Do not act confused about this name.
+- Do not ask who "${nickname || "the idol"}" is.
+- Fans may naturally call the idol "${nickname || "姐姐"}", "姐姐", "宝宝", or other fan-style nicknames.
+${fanName ? `- The fan group name is "${fanName}". Fans may refer to themselves as "${fanName}".` : ""}
+${signature ? `- Idol signature/status: "${signature}".` : ""}
+${statusText ? `- Current status text: "${statusText}".` : ""}
+- If the idol mentions "ins" or "Instagram", treat it as a generic social media account in this fictional app context.
+- Do not claim to actually open, verify, or access a real external platform.
+- Fans can react as if the idol is talking about their social media account.
+`;
 }
 
 function timeContextPrompt(timeContext = {}) {

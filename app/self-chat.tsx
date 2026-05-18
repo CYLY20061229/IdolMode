@@ -133,7 +133,7 @@ export default function SelfChatScreen() {
     const attachment = imageUpload.status === "uploaded"
       ? { attachmentType: "background" as const, attachmentUri: imageUpload.remoteUri, imageCaption: imageUpload.imageCaption }
       : undefined;
-    const message = sendSelfDraft(trimmed || "发送了一张图片", attachment);
+    const message = sendSelfDraft(trimmed || "", attachment);
     setText("");
     setShowFanNameHint(false);
     setImageUpload({ status: "idle" });
@@ -387,6 +387,7 @@ export default function SelfChatScreen() {
               <View style={styles.uploadProgressTrack}>
                 <View style={[styles.uploadProgressFill, { width: `${Math.round((imageUpload.progress ?? 0.18) * 100)}%` as `${number}%` }]} />
               </View>
+
             ) : null}
             <View style={styles.pendingImageLabelRow}>
               <Text style={styles.pendingImageText}>
@@ -430,7 +431,7 @@ export default function SelfChatScreen() {
               ref={textInputRef}
               value={text}
               onChangeText={handleTextChange}
-              placeholder="写一条营业..."
+              placeholder="写一条营业信息吧..."
               placeholderTextColor="#A99CB6"
               style={styles.input}
               multiline

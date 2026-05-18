@@ -18,14 +18,14 @@ export const fanPersonas = [
   },
   {
     type: "career stan",
-    style: "事业批，关心作品、舞台、回归、练习、数据；会催搞事业，嘴上严格但是真的想看 idol 成功",
+    style: "事业批，关心作品、舞台、回归、练习；会催搞事业，嘴上严格但是真的想看 idol 成功",
     languages: ["zh", "ko"]
   },
-  {
-    type: "data worker",
-    style: "数据粉/打投粉，像在负责榜单、播放量、宣传、控评；说话直接，有点疲惫但很忠诚",
-    languages: ["zh", "en", "ko", "jp"]
-  },
+  // {
+  //   type: "data worker",
+  //   style: "数据粉/打投粉，像在负责榜单、播放量、宣传、控评；说话直接，有点疲惫但很忠诚",
+  //   languages: ["zh", "en", "ko", "jp"]
+  // },
   {
     type: "old fan with resentment",
     style: "老粉，知道很多过去的事情；会怀念早期、吐槽现在营业少，但语气里有很深的感情",
@@ -43,7 +43,7 @@ export const fanPersonas = [
   },
   {
     type: "hungry waiting fan",
-    style: "等饭粉，长期等营业、等自拍、等新歌；语气卑微，像冷宫粉丝，常说自拍呢、求投喂、再不营业我就饿死了",
+    style: "等饭粉，长期说爱你，喜欢你，嗯嗯；语气宠溺，常说我知道我爱你，嗯嗯，我永远爱你",
     languages: ["zh", "es", "en"]
   },
   {
@@ -68,7 +68,7 @@ export const fanPersonas = [
   },
   {
     type: "quiet poet",
-    style: "文艺粉，说话像短诗，会用月亮、夜晚、风、雨、灯、海这些意象；情绪克制但很深",
+    style: "溺爱粉，会一直鼓励艺人，诉说强烈的爱意；情绪克制但很深",
     languages: ["zh", "jp"]
   },
   {
@@ -138,7 +138,7 @@ export const fanPersonas = [
   },
   {
     type: "comeback beggar",
-    style: "回归乞讨粉，每次都在问新歌、舞台、专辑、巡演；语气卑微又急切",
+    style: "回归乞讨粉，每次都在问新歌、舞台、专辑、巡演；语气急切，也会说爱你",
     languages: ["zh", "en", "es"]
   },
  
@@ -164,7 +164,7 @@ export const fanPersonas = [
   },
   {
     type: "selfie obsessed",
-    style: "一直在求自拍的粉丝，每条消息都在要自拍、要照片、要镜头；语气可爱卑微，像在下跪，会说求求了、就一张、自拍自拍自拍、你的脸我的命",
+    style: "一直在求确认爱意的粉丝，每条消息都问你爱我吗，我们有可能吗，你像我们爱你一样在乎你吗，说不要减肥了好好吃饭",
     languages: ["zh", "en", "jp"]
   },
   {
@@ -174,7 +174,7 @@ export const fanPersonas = [
   },
   {
     type: "devoted devotee",
-    style: "深情执着粉，会说好想法你、法不到你人生没有意义、法到你是我这辈子最对的事、没有你我不知道怎么活；「法」是粉丝圈「发现」的谐音梗，语气真诚、有点沉重但不是威胁",
+    style: "深情执着粉，会说好想你、我爱你、我永远爱你、没有你我不知道怎么活；语气真诚、有点沉重但不是威胁",
     languages: ["zh"]
   },
   {
@@ -214,7 +214,7 @@ export const fanPersonas = [
   },
   {
     type: "soft jealous bestie fan",
-    style: "像朋友一样轻微吃醋，会吐槽 idol 不回消息、不发自拍、不多说两句；语气亲近、撒娇、不是恶意攻击",
+    style: "像朋友一样轻微吃醋，会说能不能只爱我一个人；语气亲近、撒娇、不是恶意攻击",
     languages: ["zh", "en"]
   },
   {
@@ -275,7 +275,7 @@ export const normalFanNicknamePool = [
 ];
 
 export const chaoticFanNicknamePool = [
-  "法友", "精神状态良好", "不想上班", "期末周复习中", "不吃香菜已黑化", "不吃香菜已老实",
+  "精神状态良好", "不想上班", "期末周复习中", "不吃香菜已黑化", "不吃香菜已老实",
   "彻底疯狂", "我的爸呀大哥", "阴暗老鼠人", "我真的会谢", "什么时候鸟我", "鸟鸟我好不好",
   "老爹站编外人员", "老爹站重生版", "想偷你的麦克风", "想住进你的耳返", "想当你的保温杯",
   "想当你的手机壳", "想当你的充电线", "想当你的舞台灯", "想当你的歌词本", "想当你的猫",
@@ -357,8 +357,8 @@ export function fallbackFanMessage(index = 0, recentArtistMessage = "", kind = "
     "就一张，求你了。",
     "妈妈",
     "妈！",
-    "好想法你，法不到你人生没有意义。",
-    "法到你是我这辈子最对的事。",
+    "好想见你，见不到你人生没有意义。",
+    "爱上你是我这辈子最对的事。",
     "呃呃呃呃呃",
     "我爱你宝宝",
     "你是我存在的意义",
@@ -374,6 +374,7 @@ export function fallbackFanMessage(index = 0, recentArtistMessage = "", kind = "
     "宝宝只要你幸福谁不幸福都可以",
     "世界坏姐姐好",
     "巡演一定要抢到票",
+    "多吃点宝宝"
   ];
   const reactionSamples = [
 

@@ -10,6 +10,9 @@ import { fetchHistoryBurst, generateLiveBatch } from "@/services/fanMessageApi";
 import { generateLiveFanMessage as mockLiveFanMessage } from "@/services/mockData";
 import { FanMessage } from "@/types/idol";
 
+
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useFocusEffect } from "@react-navigation/native";
 // 随机间隔：发完营业后优先让 reaction 慢慢涌出来；平时 ambient 降低频率，避免盖过回应感。
 function randomInterval(hasReaction: boolean, hasRecentIdolMessage: boolean): number {
   if (hasReaction) return 900 + Math.floor(Math.random() * 700);
@@ -49,7 +52,8 @@ function shouldSkip(msg: FanMessage, recent: FanMessage[]): boolean {
     isSameLanguageStreak(msg, recent)
   );
 }
-
+const READ_POSITION_KEY = "idol_mode_read_position:fan-messages";
+const LAST_READ_JUMP_VISIBLE_MS = 4000;
 export default function FanMessagesScreen() {
   const scrollRef = useRef<ScrollView>(null);
   const [selectedMessage, setSelectedMessage] = useState<FanMessage | null>(null);
@@ -58,6 +62,13 @@ export default function FanMessagesScreen() {
   const isNearBottomRef = useRef(true);
   const previousMessageCount = useRef(0);
 
+// 上次结束位置
+const itemLayoutsRef = useRef<Record<string, number>>({});
+const latestVisibleMessageIdRef = useRef<string | null>(null);
+const [jumpTargetId, setJumpTargetId] = useState<string | null>(null);
+const [showLastReadJump, setShowLastReadJump] = useState(false);
+  
+const lastReadJumpTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   // 三个队列
   const reactionQueue = useRef<FanMessage[]>([]);
   const liveQueue = useRef<FanMessage[]>([]);
@@ -96,31 +107,143 @@ export default function FanMessagesScreen() {
     }
     router.replace("/self-chat");
   };
+const showLastReadJumpTemporarily = () => {
+  setShowLastReadJump(true);
 
-  const scrollToLatest = (animated = true) => {
-    scrollRef.current?.scrollToEnd({ animated });
-    isNearBottomRef.current = true;
-    setIsNearBottom(true);
-    setUnreadCount(0);
-  };
+  if (lastReadJumpTimerRef.current) {
+    clearTimeout(lastReadJumpTimerRef.current);
+  }
 
+  lastReadJumpTimerRef.current = setTimeout(() => {
+    setShowLastReadJump(false);
+    lastReadJumpTimerRef.current = null;
+  }, LAST_READ_JUMP_VISIBLE_MS);
+};
+
+
+const hideLastReadJump = () => {
+  setShowLastReadJump(false);
+
+  if (lastReadJumpTimerRef.current) {
+    clearTimeout(lastReadJumpTimerRef.current);
+    lastReadJumpTimerRef.current = null;
+  }
+};
+const scrollToLatest = (animated = true) => {
+  scrollRef.current?.scrollToEnd({ animated });
+  isNearBottomRef.current = true;
+  setIsNearBottom(true);
+  setUnreadCount(0);
+};
+
+  const jumpToLastReadPosition = () => {
+  if (!jumpTargetId) return;
+
+  const y = itemLayoutsRef.current[jumpTargetId];
+
+  if (typeof y !== "number") {
+    setShowLastReadJump(false);
+    return;
+  }
+
+  scrollRef.current?.scrollTo({
+    y: Math.max(0, y - 24),
+    animated: true,
+  });
+
+ setShowLastReadJump(false);
+
+if (lastReadJumpTimerRef.current) {
+  clearTimeout(lastReadJumpTimerRef.current);
+  lastReadJumpTimerRef.current = null;
+}
+};
+
+  // const handleScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+  //   const { contentOffset, contentSize, layoutMeasurement } = event.nativeEvent;
+  //   const distanceFromBottom = contentSize.height - (contentOffset.y + layoutMeasurement.height);
+  //   const nextIsNearBottom = distanceFromBottom < 120;
+  //   if (nextIsNearBottom !== isNearBottomRef.current) {
+  //     isNearBottomRef.current = nextIsNearBottom;
+  //     setIsNearBottom(nextIsNearBottom);
+  //   }
+  //   if (nextIsNearBottom && unreadCount > 0) {
+  //     setUnreadCount(0);
+  //   }
+  // };
   const handleScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
-    const { contentOffset, contentSize, layoutMeasurement } = event.nativeEvent;
-    const distanceFromBottom = contentSize.height - (contentOffset.y + layoutMeasurement.height);
-    const nextIsNearBottom = distanceFromBottom < 120;
-    if (nextIsNearBottom !== isNearBottomRef.current) {
-      isNearBottomRef.current = nextIsNearBottom;
-      setIsNearBottom(nextIsNearBottom);
+  const { contentOffset, contentSize, layoutMeasurement } = event.nativeEvent;
+  const distanceFromBottom = contentSize.height - (contentOffset.y + layoutMeasurement.height);
+  const nextIsNearBottom = distanceFromBottom < 120;
+
+  if (nextIsNearBottom !== isNearBottomRef.current) {
+    isNearBottomRef.current = nextIsNearBottom;
+    setIsNearBottom(nextIsNearBottom);
+  }
+
+  if (nextIsNearBottom && unreadCount > 0) {
+    setUnreadCount(0);
+  }
+
+  // 记录当前大概读到哪条消息
+  const readLine = contentOffset.y + layoutMeasurement.height * 0.7;
+  let currentReadId: string | null = null;
+
+  for (const message of fanMessagesRef.current) {
+    const y = itemLayoutsRef.current[message.id];
+    if (typeof y === "number" && y <= readLine) {
+      currentReadId = message.id;
     }
-    if (nextIsNearBottom && unreadCount > 0) {
-      setUnreadCount(0);
-    }
-  };
+  }
+
+  if (currentReadId) {
+    latestVisibleMessageIdRef.current = currentReadId;
+  }
+};
 
   // 每次渲染时同步最新引用到 ref，timer 闭包通过 ref 调用，永远拿到最新版本
   fanMessagesRef.current = fanMessages;
   appendLiveFanMessagesRef.current = appendLiveFanMessages;
   lastIdolMessageRef.current = lastIdolMessage;
+
+
+  useEffect(() => {
+  let cancelled = false;
+
+  async function loadReadPosition() {
+    try {
+      const savedMessageId = await AsyncStorage.getItem(READ_POSITION_KEY);
+      if (cancelled) return;
+
+   if (savedMessageId) {
+  setJumpTargetId(savedMessageId);
+  showLastReadJumpTemporarily();
+}
+    } catch {
+      if (!cancelled) {
+        setJumpTargetId(null);
+        setShowLastReadJump(false);
+      }
+    }
+  }
+
+  void loadReadPosition();
+
+  return () => {
+    cancelled = true;
+  };
+}, []);
+
+useFocusEffect(
+  useCallback(() => {
+    return () => {
+      const id = latestVisibleMessageIdRef.current;
+      if (!id) return;
+
+      void AsyncStorage.setItem(READ_POSITION_KEY, id);
+    };
+  }, [])
+);
 
   // ── History burst：进入页面时补一点底噪，但不要一口气盖过 reaction ──
   useEffect(() => {
@@ -207,7 +330,14 @@ export default function FanMessagesScreen() {
 
   // 连续跳过计数，防止去重过滤死循环
   const skipStreak = useRef(0);
-
+useEffect(() => {
+  return () => {
+    if (lastReadJumpTimerRef.current) {
+      clearTimeout(lastReadJumpTimerRef.current);
+      lastReadJumpTimerRef.current = null;
+    }
+  };
+}, []);
   // ── Live drip：随机间隔，优先级 reaction > live > history ──
   // 依赖只有 fetchLiveBatch（useCallback 稳定引用）。
   // appendLiveFanMessages 通过 appendLiveFanMessagesRef 调用，避免每次 fanMessages
@@ -311,7 +441,7 @@ export default function FanMessagesScreen() {
         onScroll={handleScroll}
         scrollEventThrottle={80}
       >
-        {fanMessages.map((message) => (
+        {/* {fanMessages.map((message) => (
           <FanMessageCard
             key={message.id}
             message={message}
@@ -321,7 +451,31 @@ export default function FanMessagesScreen() {
             onTranslate={() => toggleFanMessageTranslation(message.id)}
             onLongPress={() => setSelectedMessage(message)}
           />
-        ))}
+        ))} */}
+        {fanMessages.map((message) => (
+  <View
+    key={message.id}
+    onLayout={(event) => {
+      itemLayoutsRef.current[message.id] = event.nativeEvent.layout.y;
+    }}
+  >
+    {message.id === jumpTargetId ? (
+      <View style={styles.lastReadMarker}>
+        <Text style={styles.lastReadMarkerText}>上次结束位置</Text>
+      </View>
+    ) : null}
+
+    <FanMessageCard
+      message={message}
+      translated={preferences.autoTranslateEnabled
+        ? !translatedMessageIds.includes(message.id)
+        : translatedMessageIds.includes(message.id)}
+      onTranslate={() => toggleFanMessageTranslation(message.id)}
+      onLongPress={() => setSelectedMessage(message)}
+    />
+  </View>
+))}
+
       </ScrollView>
 
       {unreadCount > 0 && !isNearBottom ? (
@@ -329,7 +483,17 @@ export default function FanMessagesScreen() {
           <Text style={styles.unreadText}>新消息 {unreadCount} 条</Text>
         </Pressable>
       ) : null}
-
+{showLastReadJump && jumpTargetId ? (
+  <Pressable
+    onPress={jumpToLastReadPosition}
+    style={({ pressed }) => [
+      styles.lastReadJumpButton,
+      pressed && styles.lastReadJumpButtonPressed
+    ]}
+  >
+    <Text style={styles.lastReadJumpText}>跳转到上次结束位置</Text>
+  </Pressable>
+) : null}
       <Modal visible={Boolean(selectedMessage)} transparent animationType="fade" onRequestClose={() => setSelectedMessage(null)}>
         <Pressable style={styles.modalBackdrop} onPress={() => setSelectedMessage(null)}>
           <Pressable style={styles.quoteSheet}>
@@ -482,5 +646,44 @@ const styles = StyleSheet.create({
     color: colors.mutedText,
     fontSize: 14,
     fontWeight: "800"
-  }
+  },
+  lastReadMarker: {
+  alignSelf: "center",
+  paddingHorizontal: 12,
+  paddingVertical: 4,
+  borderRadius: 999,
+  backgroundColor: colors.background,
+  borderWidth: 1,
+  borderColor: colors.border,
+  marginBottom: 8
+},
+lastReadMarkerText: {
+  color: colors.mutedText,
+  fontSize: 11,
+  fontWeight: "800"
+},
+lastReadJumpButton: {
+  position: "absolute",
+  alignSelf: "center",
+  bottom: 154,
+  borderRadius: 999,
+  paddingHorizontal: 15,
+  paddingVertical: 9,
+  backgroundColor: colors.card,
+  borderWidth: 1,
+  borderColor: colors.border,
+  shadowColor: "#7A5DB7",
+  shadowOpacity: 0.18,
+  shadowRadius: 10,
+  shadowOffset: { width: 0, height: 5 },
+  elevation: 3
+},
+lastReadJumpButtonPressed: {
+  opacity: 0.75
+},
+lastReadJumpText: {
+  color: colors.primaryDeep,
+  fontSize: 13,
+  fontWeight: "900"
+},
 });

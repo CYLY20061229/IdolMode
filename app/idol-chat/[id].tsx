@@ -99,7 +99,7 @@ export default function IdolChatScreen() {
     const attachment = imageUpload.status === "uploaded"
       ? { attachmentType: "background" as const, attachmentUri: imageUpload.remoteUri }
       : undefined;
-    sendIdolChatMessage(artist.id, trimmed || "发送了一张图片", attachment);
+    sendIdolChatMessage(artist.id, trimmed || "", attachment);
     setText("");
     setImageUpload({ status: "idle" });
   };

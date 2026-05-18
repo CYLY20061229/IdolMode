@@ -13,7 +13,7 @@ import {
 import { router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { Memory, MemoryType } from "@/types/idol";
-import { deleteMemory, fetchMemories, suppressMemory, writeMemory } from "@/services/memoryApi";
+import { deleteMemory, fetchMemories, suppressMemory, writeMemory, updateMemory } from "@/services/memoryApi";
 import { colors, shadow, spacing } from "@/constants/theme";
 import IconButton from "@/components/IconButton";
 
@@ -59,9 +59,9 @@ type MemoryCardProps = {
   memory: Memory;
   onDelete: (id: string) => void;
   onSuppress: (id: string) => void;
+  onEdit: (memory: Memory) => void;
 };
-
-function MemoryCard({ memory, onDelete, onSuppress }: MemoryCardProps) {
+function MemoryCard({ memory, onDelete, onSuppress, onEdit }: MemoryCardProps) {
   const typeLabel = TYPE_LABEL[memory.memory_type] ?? memory.memory_type;
   const tagColor = TYPE_COLOR[memory.memory_type] ?? colors.border;
 
@@ -111,16 +111,24 @@ function MemoryCard({ memory, onDelete, onSuppress }: MemoryCardProps) {
         </Text>
       )}
 
-      <View style={styles.actions}>
-        {!memory.user_suppressed && (
-          <Pressable
-            onPress={handleSuppress}
-            style={({ pressed }) => [styles.actionBtn, pressed && styles.actionBtnPressed]}
-          >
-            <Ionicons name="eye-off-outline" size={14} color={colors.mutedText} />
-            <Text style={styles.actionText}>不再提起</Text>
-          </Pressable>
-        )}
+<View style={styles.actions}>
+  <Pressable
+    onPress={() => onEdit(memory)}
+    style={({ pressed }) => [styles.actionBtn, pressed && styles.actionBtnPressed]}
+  >
+    <Ionicons name="create-outline" size={14} color={colors.mutedText} />
+    <Text style={styles.actionText}>编辑</Text>
+  </Pressable>
+
+  {!memory.user_suppressed && (
+    <Pressable
+      onPress={handleSuppress}
+      style={({ pressed }) => [styles.actionBtn, pressed && styles.actionBtnPressed]}
+    >
+      <Ionicons name="eye-off-outline" size={14} color={colors.mutedText} />
+      <Text style={styles.actionText}>不再提起</Text>
+    </Pressable>
+  )}
         <Pressable
           onPress={handleDelete}
           style={({ pressed }) => [styles.actionBtn, styles.actionBtnDanger, pressed && styles.actionBtnPressed]}
@@ -142,7 +150,10 @@ export default function MyMemoriesScreen() {
   const [writeContent, setWriteContent] = useState("");
   const [writeType, setWriteType] = useState<MemoryType>("life_event");
   const [writing, setWriting] = useState(false);
-
+const [editingMemory, setEditingMemory] = useState<Memory | null>(null);
+const [editContent, setEditContent] = useState("");
+const [editType, setEditType] = useState<MemoryType>("life_event");
+const [editing, setEditing] = useState(false);
   const load = useCallback(async () => {
     setLoading(true);
     const data = await fetchMemories();
@@ -167,7 +178,46 @@ export default function MyMemoriesScreen() {
       );
     }
   };
+const openEditMemory = (memory: Memory) => {
+  setEditingMemory(memory);
+  setEditContent(memory.content || "");
+  setEditType(memory.memory_type || "life_event");
+};
 
+const closeEditMemory = () => {
+  if (editing) return;
+  setEditingMemory(null);
+  setEditContent("");
+  setEditType("life_event");
+};
+
+const handleEdit = async () => {
+  if (!editingMemory) return;
+
+  const trimmed = editContent.trim();
+  if (!trimmed) {
+    Alert.alert("内容不能为空");
+    return;
+  }
+
+  setEditing(true);
+
+  const updated = await updateMemory(editingMemory.id, {
+    content: trimmed,
+    memoryType: editType,
+  });
+
+  if (updated) {
+    setMemories((prev) =>
+      prev.map((m) => (m.id === editingMemory.id ? updated : m))
+    );
+    closeEditMemory();
+  } else {
+    Alert.alert("保存失败", "记忆没有修改成功，请稍后再试。");
+  }
+
+  setEditing(false);
+};
   const handleWrite = async () => {
     const trimmed = writeContent.trim();
     if (!trimmed) return;
@@ -182,6 +232,7 @@ export default function MyMemoriesScreen() {
     }
     setWriting(false);
   };
+  
 
   const active = memories.filter((m) => !m.user_suppressed);
   const suppressed = memories.filter((m) => m.user_suppressed);
@@ -227,6 +278,7 @@ export default function MyMemoriesScreen() {
               memory={m}
               onDelete={handleDelete}
               onSuppress={handleSuppress}
+              onEdit={openEditMemory}
             />
           ))}
 
@@ -239,6 +291,7 @@ export default function MyMemoriesScreen() {
                   memory={m}
                   onDelete={handleDelete}
                   onSuppress={handleSuppress}
+                  onEdit={openEditMemory}
                 />
               ))}
             </>
@@ -289,9 +342,99 @@ export default function MyMemoriesScreen() {
           </Pressable>
         </Pressable>
       </Modal>
+       {/* 编辑记忆弹窗 */}
+<Modal
+  visible={Boolean(editingMemory)}
+  transparent
+  animationType="slide"
+  onRequestClose={closeEditMemory}
+>
+  <Pressable style={writeModal.backdrop} onPress={closeEditMemory}>
+    <Pressable
+      style={[writeModal.sheet, { backgroundColor: colors.card, borderColor: colors.border }]}
+      onPress={() => {}}
+    >
+      <Text style={writeModal.title}>编辑记忆</Text>
+
+      <Text style={[writeModal.label, { color: colors.mutedText }]}>类型</Text>
+      <View style={writeModal.typeRow}>
+        {(["life_event", "preference", "habit", "creative_context", "emotion"] as MemoryType[]).map((t) => (
+          <Pressable
+            key={t}
+            onPress={() => setEditType(t)}
+            style={[
+              writeModal.typeChip,
+              editType === t && {
+                backgroundColor: colors.primaryDeep,
+                borderColor: colors.primaryDeep,
+              },
+            ]}
+          >
+            <Text
+              style={[
+                writeModal.typeChipText,
+                editType === t && { color: colors.card },
+              ]}
+            >
+              {TYPE_LABEL[t]}
+            </Text>
+          </Pressable>
+        ))}
+      </View>
+
+      <Text style={[writeModal.label, { color: colors.mutedText }]}>内容</Text>
+      <TextInput
+        style={[
+          writeModal.input,
+          {
+            backgroundColor: colors.background,
+            borderColor: colors.border,
+            color: colors.text,
+          },
+        ]}
+        value={editContent}
+        onChangeText={setEditContent}
+        placeholder="修改这条记忆…"
+        placeholderTextColor={colors.mutedText}
+        multiline
+        maxLength={300}
+      />
+
+      <Text style={writeModal.charCount}>{editContent.length}/300</Text>
+
+      <View style={writeModal.actions}>
+        <Pressable
+          style={[writeModal.btn, { backgroundColor: colors.background }]}
+          onPress={closeEditMemory}
+          disabled={editing}
+        >
+          <Text style={[writeModal.btnText, { color: colors.mutedText }]}>取消</Text>
+        </Pressable>
+
+        <Pressable
+          style={[
+            writeModal.btn,
+            { backgroundColor: colors.primaryDeep },
+            editing && { opacity: 0.65 },
+          ]}
+          onPress={handleEdit}
+          disabled={editing || !editContent.trim()}
+        >
+          <Text style={[writeModal.btnText, { color: colors.card }]}>
+            {editing ? "保存中…" : "保存"}
+          </Text>
+        </Pressable>
+      </View>
+    </Pressable>
+  </Pressable>
+</Modal>
     </View>
+
+    
   );
+ 
 }
+
 
 // ── 样式 ──────────────────────────────────────────────────────────────────────
 

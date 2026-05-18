@@ -49,7 +49,8 @@ import {
   updateUserPreferences,
   updateSelfMessageStatus,
   upsertDeviceUser,
-  verifyEmailLoginCode
+  verifyEmailLoginCode,
+  updateMemoryContent,
 } from "./repository.mjs";
 
 loadEnvFiles();
@@ -195,7 +196,15 @@ async function requireDatabaseUser(req, res, requestId, body = {}) {
 
   return String(userId);
 }
-
+async function getArtistProfileForUser(userId) {
+  if (!userId || !isDbEnabled()) return {};
+  try {
+    const account = await getUserAccount(userId);
+    return account?.profile || {};
+  } catch {
+    return {};
+  }
+}
 async function recordAiJobStart({ userId, operation, sourceMessageId, requestPayload }) {
   if (!isDbEnabled() || !userId) return undefined;
   const config = getAiConfig();
@@ -660,19 +669,37 @@ const server = http.createServer(async (req, res) => {
       sendJson(req, res, 200, { ok: true, requestId: id });
       return;
     }
+if (req.method === "PATCH" && memoryMatch) {
+  const body = await readJson(req);
+  const userId = await requireDatabaseUser(req, res, id, body);
+  if (!userId) return;
 
-    if (req.method === "PATCH" && memoryMatch) {
-      const body = await readJson(req);
-      const userId = await requireDatabaseUser(req, res, id, body);
-      if (!userId) return;
-      if (body.action === "suppress") {
-        await suppressMemory(userId, decodeURIComponent(memoryMatch[1]));
-        sendJson(req, res, 200, { ok: true, requestId: id });
-      } else {
-        sendJson(req, res, 400, { error: "Unknown action.", requestId: id });
-      }
+  const memoryId = decodeURIComponent(memoryMatch[1]);
+
+  if (body.action === "suppress") {
+    await suppressMemory(userId, memoryId);
+    sendJson(req, res, 200, { ok: true, requestId: id });
+    return;
+  }
+
+  if (body.action === "update") {
+    const memory = await updateMemoryContent(userId, memoryId, {
+      content: body.content,
+      memoryType: body.memoryType
+    });
+
+    if (!memory) {
+      sendJson(req, res, 404, { error: "Memory not found.", requestId: id });
       return;
     }
+
+    sendJson(req, res, 200, { ok: true, memory, requestId: id });
+    return;
+  }
+
+  sendJson(req, res, 400, { error: "Unknown action.", requestId: id });
+  return;
+}
 
     // POST /me/memories — 用户手动写入记忆
     if (req.method === "POST" && url.pathname === "/me/memories") {
@@ -954,8 +981,18 @@ const server = http.createServer(async (req, res) => {
           memoryContext = buildMemoryContext(candidateMemories);
         }
 
-        const fanMessages = await generateReactionBurst(body.message, safeCount, body.quotedContent || null, memoryContext, body.timeContext, body.imageCaption || "");
+        // const fanMessages = await generateReactionBurst(body.message, safeCount, body.quotedContent || null, memoryContext, body.timeContext, body.imageCaption || "");
+const artistProfile = await getArtistProfileForUser(userId);
 
+const fanMessages = await generateReactionBurst(
+  body.message,
+  safeCount,
+  body.quotedContent || null,
+  memoryContext,
+  body.timeContext,
+  body.imageCaption || "",
+  artistProfile
+);
         // Phase 5: 收集本批次实际使用的 memoryIds，更新 mention 统计
         if (candidateMemories.length > 0 && isDbEnabled()) {
           const usedIds = fanMessages
@@ -1004,7 +1041,9 @@ const server = http.createServer(async (req, res) => {
         requestPayload: { message: body.message, count: body.count }
       });
       try {
-        const fanMessages = await generateFanMessages(body.message, body.count, body.timeContext);
+        // const fanMessages = await generateFanMessages(body.message, body.count, body.timeContext);
+        const artistProfile = await getArtistProfileForUser(userId);
+const fanMessages = await generateFanMessages(body.message, body.count, body.timeContext, artistProfile);
         if (userId && body.persist !== false && isDbEnabled()) {
           await createFanMessages(userId, fanMessages, body.sourceMessageId);
         }

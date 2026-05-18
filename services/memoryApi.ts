@@ -61,3 +61,29 @@ export async function writeMemory(content: string, memoryType: MemoryType): Prom
     return false;
   }
 }
+export async function updateMemory(
+  memoryId: string,
+  input: {
+    content: string;
+    memoryType?: MemoryType;
+  }
+): Promise<Memory | null> {
+  try {
+    const res = await apiFetch(`/me/memories/${encodeURIComponent(memoryId)}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action: "update",
+        content: input.content,
+        memoryType: input.memoryType
+      }),
+    });
+
+    if (!res.ok) return null;
+
+    const data = await res.json();
+    return data.memory || null;
+  } catch {
+    return null;
+  }
+}

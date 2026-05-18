@@ -933,7 +933,44 @@ export async function suppressMemory(userId, memoryId) {
     [memoryId, userId]
   );
 }
+export async function updateMemoryContent(userId, memoryId, patch = {}) {
+  const content = String(patch.content || "").trim();
+  const memoryType = String(patch.memoryType || "").trim();
 
+  if (!content) {
+    throw new Error("content is required.");
+  }
+
+  const validTypes = ["preference", "habit", "life_event", "creative_context", "emotion"];
+  if (memoryType && !validTypes.includes(memoryType)) {
+    throw new Error("Invalid memoryType.");
+  }
+
+  const now = Date.now();
+
+  const result = await query(
+    `UPDATE user_memories
+     SET content = $3,
+         memory_type = CASE WHEN $4::text = '' THEN memory_type ELSE $4::text END,
+         source_preview = '用户手动编辑',
+         importance = GREATEST(importance, 4),
+         last_seen_at = $5
+     WHERE id = $1
+       AND user_id = $2
+       AND archived = false
+     RETURNING id, memory_type, content, importance,
+               mention_count, last_mentioned_at, user_suppressed, created_at`,
+    [
+      memoryId,
+      String(userId),
+      content,
+      memoryType,
+      now
+    ]
+  );
+
+  return result.rows[0] || null;
+}
 /**
  * 用户物理删除某条记忆（永久不再使用）。
  */

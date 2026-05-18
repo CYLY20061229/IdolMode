@@ -31,7 +31,7 @@ export default function MyBubbleStats({ growthStats, fanMessageCount }: MyBubble
 
   return (
     <View style={[styles.card, { backgroundColor: theme.colors.card }]}>
-      <Text style={[styles.title, { color: theme.colors.text }]}>我的 bubble</Text>
+      <Text style={[styles.title, { color: theme.colors.text }]}>我的数据</Text>
       <View style={styles.grid}>
         {stats.map(([label, value]) => (
           <View key={label} style={[styles.stat, { backgroundColor: theme.colors.background }]}>
